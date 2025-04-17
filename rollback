@@ -1,12 +1,15 @@
--- LocalScript 위치: StarterGui 또는 StarterPlayerScripts
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- UI 생성
+-- PlayerGui가 준비될 때까지 대기
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- GUI 생성
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "RollbackUI"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
 
 -- Rollback 버튼
 local rollbackButton = Instance.new("TextButton")
@@ -32,37 +35,33 @@ rejoinButton.Font = Enum.Font.GothamBold
 rejoinButton.TextSize = 20
 rejoinButton.Parent = screenGui
 
--- 저장할 인벤토리 상태
+-- 저장용 테이블
 local savedInventory = {}
 
--- Rollback 버튼 기능
+-- Rollback 기능
 rollbackButton.MouseButton1Click:Connect(function()
 	savedInventory = {}
-
 	for _, tool in pairs(player.Backpack:GetChildren()) do
 		if tool:IsA("Tool") then
 			table.insert(savedInventory, tool.Name)
 		end
 	end
-
 	print("✅ 인벤토리 저장됨:", table.concat(savedInventory, ", "))
 end)
 
--- Rejoin 버튼 기능 (저장된 상태로 복원)
+-- Rejoin 기능
 rejoinButton.MouseButton1Click:Connect(function()
 	if #savedInventory == 0 then
 		warn("❌ 저장된 인벤토리 없음")
 		return
 	end
 
-	-- 기존 아이템 제거
 	for _, tool in pairs(player.Backpack:GetChildren()) do
 		if tool:IsA("Tool") then
 			tool:Destroy()
 		end
 	end
 
-	-- 저장된 아이템 복원
 	for _, itemName in ipairs(savedInventory) do
 		local tool = Instance.new("Tool")
 		tool.Name = itemName
