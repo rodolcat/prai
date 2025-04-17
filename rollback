@@ -14,7 +14,7 @@ screenGui.Parent = playerGui
 -- SaveButton UI 자동 생성
 local saveButton = Instance.new("TextButton")
 saveButton.Size = UDim2.new(0, 200, 0, 50)
-saveButton.Position = UDim2.new(0.5, -100, 0.5, -25)
+saveButton.Position = UDim2.new(0.5, -100, 0.5, -25) -- 화면 가운데 배치
 saveButton.Text = "데이터 저장"
 saveButton.Parent = screenGui
 
