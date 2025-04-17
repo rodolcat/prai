@@ -88,12 +88,26 @@ thorianButton.BackgroundColor3 = Color3.fromRGB(140, 70, 180)
 -- 텔레포트 탭 버튼
 local reloadBtn = Instance.new("TextButton", teleportTab)
 reloadBtn.Size = UDim2.new(1, -20, 0, 30)
-reloadBtn.Position = UDim2.new(0, 10, 0, 40)
+reloadBtn.Position = UDim2.new(0, 10, 0, 10)
 reloadBtn.Text = "🔄 NPC 다시 불러오기"
 reloadBtn.Font = Enum.Font.SourceSansBold
 reloadBtn.TextSize = 14
 reloadBtn.TextColor3 = Color3.new(1, 1, 1)
 reloadBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+
+-- 스크롤 가능한 NPC 목록을 위한 ScrollingFrame
+local npcScrollFrame = Instance.new("ScrollingFrame", teleportTab)
+npcScrollFrame.Size = UDim2.new(1, -20, 1, -60)  -- 텔레포트 탭 아래에 NPC 목록 표시
+npcScrollFrame.Position = UDim2.new(0, 10, 0, 40)
+npcScrollFrame.BackgroundTransparency = 1
+npcScrollFrame.ScrollBarThickness = 10
+npcScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+local npcListLayout = Instance.new("UIListLayout")
+npcListLayout.Parent = npcScrollFrame
+npcListLayout.FillDirection = Enum.FillDirection.Vertical
+npcListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+npcListLayout.Padding = UDim.new(0, 5)
 
 -- NPC 불러오기 및 텔레포트
 local npcButtons = {}
@@ -130,7 +144,7 @@ local function loadNPCs()
             btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
         end)
 
-        btn.Parent = teleportTab
+        btn.Parent = npcScrollFrame
         table.insert(npcButtons, btn)
     end
 end
@@ -275,7 +289,10 @@ thorianButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- 탭 전환 기능
+-- NPC 리스트 불러오기
+loadNPCs()
+
+-- 탭 전환
 mainTabButton.MouseButton1Click:Connect(function()
     mainTab.Visible = true
     teleportTab.Visible = false
@@ -285,6 +302,3 @@ teleportTabButton.MouseButton1Click:Connect(function()
     mainTab.Visible = false
     teleportTab.Visible = true
 end)
-
--- NPC 불러오기
-loadNPCs()
