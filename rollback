@@ -1,4 +1,3 @@
--- 로컬 플레이어와 서비스 참조
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
@@ -41,7 +40,7 @@ end)
 -- 리조인 버튼 기능
 createButton("RejoinButton", UDim2.new(0, 100, 0, 160), "Rejoin", function()
     if rollbackData then
-        -- 현재 서버로 재접속
+        -- 동일한 서버로 재접속
         TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
     else
         print("No rollback point set.")
