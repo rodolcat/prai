@@ -1,18 +1,23 @@
--- 필요한 서비스 불러오기
 local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Dear ReGui 불러오기
-local ReGui = require(ReplicatedStorage:WaitForChild("DearReGui"))
+-- GUI 생성
+local gui = Instance.new("ScreenGui")
+gui.Name = "AutoSystemUI"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
 
--- Dear ReGui 인스턴스 생성
-local ui = ReGui:Create("AutoSystemUI")
-ui.Position = UDim2.new(0.6, -100, 0.5, -160)
-ui.Size = UDim2.new(0, 230, 0, 320)
-ui.Draggable = true
+-- 프레임
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 230, 0, 320)
+frame.Position = UDim2.new(0.6, -100, 0.5, -160)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+frame.Parent = gui
 
 -- 상태 변수
 _G.AutoDodge = false
@@ -20,110 +25,61 @@ _G.AutoQTE = false
 _G.AutoThorian = false
 _G.SelectedWeapon = "Sword"
 
--- 버튼 및 기능 구현
-local function createToggleButton(name, defaultText, color, yOffset, toggleFunc)
-	local button = ui:Add("Button", name)
-	button.Position = UDim2.new(0, 10, 0, yOffset)
-	button.Size = UDim2.new(1, -20, 0, 40)
-	button.BackgroundColor3 = color
-	button.Text = defaultText .. ": OFF"
-
-	button.MouseButton1Click:Connect(function()
-		local current = toggleFunc()
-		button.Text = defaultText .. ": " .. (current and "ON" or "OFF")
-	end)
+-- 버튼 생성 함수
+local function createButton(text, position, color, callback)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, -20, 0, 40)
+    button.Position = position
+    button.Text = text
+    button.Font = Enum.Font.SourceSansBold
+    button.TextSize = 18
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.BackgroundColor3 = color
+    button.Parent = frame
+    button.MouseButton1Click:Connect(callback)
+    return button
 end
 
--- 자동회피 루프
-local function startAutoDodge()
-	while _G.AutoDodge do
-		pcall(function()
-			local rf = ReplicatedStorage:FindFirstChild("Remotes")?
-				FindFirstChild("Information")?
-				FindFirstChild("RemoteFunction")
-			if rf then
-				rf:FireServer({true, true}, "DodgeMinigame")
-			end
-		end)
-		task.wait(0.2)
-	end
-end
-
--- 무기 QTE 루프
-local function startAutoQTE()
-	while _G.AutoQTE do
-		pcall(function()
-			local rf = ReplicatedStorage:FindFirstChild("Remotes")?
-				FindFirstChild("Information")?
-				FindFirstChild("RemoteFunction")
-			if rf then
-				local qteName = _G.SelectedWeapon .. "QTE"
-				rf:FireServer(true, qteName)
-			end
-		end)
-		task.wait(0.4)
-	end
-end
-
--- 토리안 QTE 루프
-local function startAutoThorian()
-	while _G.AutoThorian do
-		pcall(function()
-			local rf = ReplicatedStorage:FindFirstChild("Remotes")?
-				FindFirstChild("Information")?
-				FindFirstChild("RemoteFunction")
-			if rf then
-				rf:FireServer(true, "ThorianQTE")
-			end
-		end)
-		task.wait(0.4)
-	end
-end
-
--- 버튼 생성
-createToggleButton("AutoDodgeBtn", "자동회피", Color3.fromRGB(70, 130, 180), 10, function()
-	_G.AutoDodge = not _G.AutoDodge
-	if _G.AutoDodge then
-		task.spawn(startAutoDodge)
-	end
-	return _G.AutoDodge
+-- 자동회피 버튼
+local dodgeButton = createButton("자동회피: OFF", UDim2.new(0, 10, 0, 10), Color3.fromRGB(70, 130, 180), function()
+    _G.AutoDodge = not _G.AutoDodge
+    dodgeButton.Text = "자동회피: " .. (_G.AutoDodge and "ON" or "OFF")
 end)
 
-createToggleButton("AutoQTEBtn", "무기 QTE", Color3.fromRGB(180, 100, 70), 60, function()
-	_G.AutoQTE = not _G.AutoQTE
-	if _G.AutoQTE then
-		task.spawn(startAutoQTE)
-	end
-	return _G.AutoQTE
+-- 무기 QTE 버튼
+local qteButton = createButton("무기 QTE: OFF", UDim2.new(0, 10, 0, 60), Color3.fromRGB(180, 100, 70), function()
+    _G.AutoQTE = not _G.AutoQTE
+    qteButton.Text = "무기 QTE: " .. (_G.AutoQTE and "ON" or "OFF")
 end)
 
-createToggleButton("AutoThorianBtn", "토리안 QTE", Color3.fromRGB(140, 70, 180), 110, function()
-	_G.AutoThorian = not _G.AutoThorian
-	if _G.AutoThorian then
-		task.spawn(startAutoThorian)
-	end
-	return _G.AutoThorian
+-- 토리안 QTE 버튼
+local thorianButton = createButton("토리안 QTE: OFF", UDim2.new(0, 10, 0, 110), Color3.fromRGB(140, 70, 180), function()
+    _G.AutoThorian = not _G.AutoThorian
+    thorianButton.Text = "토리안 QTE: " .. (_G.AutoThorian and "ON" or "OFF")
 end)
 
--- 무기 선택 버튼
+-- 무기 선택 버튼 생성
 local weapons = {"Sword", "Spear", "Magic", "Dagger", "Fist"}
 for i, weapon in ipairs(weapons) do
-	local button = ui:Add("Button", weapon)
-	button.Size = UDim2.new(0, 100, 0, 25)
-	button.Position = UDim2.new(0, 10 + ((i - 1) % 2) * 110, 0, 170 + math.floor((i - 1) / 2) * 30)
-	button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-	button.Text = weapon
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 100, 0, 25)
+    button.Position = UDim2.new(0, 10 + ((i - 1) % 2) * 110, 0, 170 + math.floor((i - 1) / 2) * 30)
+    button.Text = weapon
+    button.Font = Enum.Font.SourceSans
+    button.TextSize = 14
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    button.Parent = frame
 
-	button.MouseButton1Click:Connect(function()
-		_G.SelectedWeapon = weapon
-		print("선택된 무기:", weapon)
-	end)
+    button.MouseButton1Click:Connect(function()
+        _G.SelectedWeapon = weapon
+        print("선택된 무기:", weapon)
+    end)
 end
 
--- K 키로 GUI 숨기기
-local UIS = game:GetService("UserInputService")
+-- K키로 GUI 숨기기/보이기
 UIS.InputBegan:Connect(function(input, processed)
-	if not processed and input.KeyCode == Enum.KeyCode.K then
-		ui.Visible = not ui.Visible
-	end
+    if not processed and input.KeyCode == Enum.KeyCode.K then
+        frame.Visible = not frame.Visible
+    end
 end)
