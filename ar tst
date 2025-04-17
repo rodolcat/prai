@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- ScreenGui 생성
+-- GUI 생성
 local gui = Instance.new("ScreenGui")
 gui.Name = "AutoSystemUI"
 gui.ResetOnSpawn = false
@@ -13,8 +13,8 @@ gui.Parent = playerGui
 
 -- 프레임
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 220)
-frame.Position = UDim2.new(0.5, -110, 0.5, -110)
+frame.Size = UDim2.new(0, 230, 0, 320)
+frame.Position = UDim2.new(0.6, -100, 0.5, -160)
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.BorderSizePixel = 0
 frame.Parent = gui
@@ -39,29 +39,39 @@ qteButton.TextSize = 18
 qteButton.TextColor3 = Color3.new(1, 1, 1)
 qteButton.BackgroundColor3 = Color3.fromRGB(180, 100, 70)
 
+-- 자동 Thorian QTE 버튼
+local thorianButton = Instance.new("TextButton", frame)
+thorianButton.Size = UDim2.new(1, -20, 0, 40)
+thorianButton.Position = UDim2.new(0, 10, 0, 110)
+thorianButton.Text = "토리안 QTE: OFF"
+thorianButton.Font = Enum.Font.SourceSansBold
+thorianButton.TextSize = 18
+thorianButton.TextColor3 = Color3.new(1, 1, 1)
+thorianButton.BackgroundColor3 = Color3.fromRGB(140, 70, 180)
+
 -- 상태 변수
 _G.AutoDodge = false
 _G.AutoQTE = false
+_G.AutoThorian = false
 _G.SelectedWeapon = "Sword"
 
 local autoDodgeTask = nil
 local autoQteTask = nil
+local autoThorianTask = nil
 
--- 무기 목록
+-- 무기 버튼 생성
 local weapons = {"Sword", "Spear", "Magic", "Dagger", "Fist"}
-
--- 무기 선택 버튼 생성
 for i, weapon in ipairs(weapons) do
-    local weaponButton = Instance.new("TextButton", frame)
-    weaponButton.Size = UDim2.new(0, 90, 0, 25)
-    weaponButton.Position = UDim2.new(0, 10 + ((i - 1) % 2) * 100, 0, 110 + math.floor((i - 1) / 2) * 30)
-    weaponButton.Text = weapon
-    weaponButton.Font = Enum.Font.SourceSans
-    weaponButton.TextSize = 14
-    weaponButton.TextColor3 = Color3.new(1, 1, 1)
-    weaponButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    local button = Instance.new("TextButton", frame)
+    button.Size = UDim2.new(0, 100, 0, 25)
+    button.Position = UDim2.new(0, 10 + ((i - 1) % 2) * 110, 0, 170 + math.floor((i - 1) / 2) * 30)
+    button.Text = weapon
+    button.Font = Enum.Font.SourceSans
+    button.TextSize = 14
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 
-    weaponButton.MouseButton1Click:Connect(function()
+    button.MouseButton1Click:Connect(function()
         _G.SelectedWeapon = weapon
         print("선택된 무기:", weapon)
     end)
@@ -84,7 +94,7 @@ local function startAutoDodge()
     end
 end
 
--- 자동 QTE 루프
+-- 자동 무기 QTE 루프
 local function startAutoQTE()
     while _G.AutoQTE do
         pcall(function()
@@ -102,11 +112,27 @@ local function startAutoQTE()
     end
 end
 
--- 자동회피 버튼 클릭
+-- 자동 Thorian QTE 루프
+local function startAutoThorianQTE()
+    while _G.AutoThorian do
+        pcall(function()
+            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+            if remotes then
+                local info = remotes:FindFirstChild("Information")
+                local rf = info and info:FindFirstChild("RemoteFunction")
+                if rf then
+                    rf:FireServer(true, "ThorianQTE")
+                end
+            end
+        end)
+        wait(0.4)
+    end
+end
+
+-- 버튼 토글 연결
 dodgeButton.MouseButton1Click:Connect(function()
     _G.AutoDodge = not _G.AutoDodge
     dodgeButton.Text = "자동회피: " .. (_G.AutoDodge and "ON" or "OFF")
-
     if _G.AutoDodge and not autoDodgeTask then
         autoDodgeTask = task.spawn(startAutoDodge)
     elseif not _G.AutoDodge then
@@ -114,15 +140,23 @@ dodgeButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- 자동 QTE 버튼 클릭
 qteButton.MouseButton1Click:Connect(function()
     _G.AutoQTE = not _G.AutoQTE
     qteButton.Text = "자동 QTE: " .. (_G.AutoQTE and "ON" or "OFF")
-
     if _G.AutoQTE and not autoQteTask then
         autoQteTask = task.spawn(startAutoQTE)
     elseif not _G.AutoQTE then
         autoQteTask = nil
+    end
+end)
+
+thorianButton.MouseButton1Click:Connect(function()
+    _G.AutoThorian = not _G.AutoThorian
+    thorianButton.Text = "토리안 QTE: " .. (_G.AutoThorian and "ON" or "OFF")
+    if _G.AutoThorian and not autoThorianTask then
+        autoThorianTask = task.spawn(startAutoThorianQTE)
+    elseif not _G.AutoThorian then
+        autoThorianTask = nil
     end
 end)
 
@@ -152,7 +186,7 @@ UIS.InputChanged:Connect(function(input)
     end
 end)
 
--- K 키로 GUI 숨기기/보이기
+-- K키로 GUI 숨기기/보이기
 UIS.InputBegan:Connect(function(input, processed)
     if not processed and input.KeyCode == Enum.KeyCode.K then
         frame.Visible = not frame.Visible
