@@ -49,13 +49,13 @@ local mainTab = Instance.new("Frame", frame)
 mainTab.Size = UDim2.new(1, 0, 1, -30)
 mainTab.Position = UDim2.new(0, 0, 0, 30)
 mainTab.BackgroundTransparency = 1
-mainTab.Visible = true
+mainTab.Visible = true  -- 초기 상태를 true로 설정하여 메인 탭이 보이도록
 
 local teleportTab = Instance.new("Frame", frame)
 teleportTab.Size = UDim2.new(1, 0, 1, -30)
 teleportTab.Position = UDim2.new(0, 0, 0, 30)
 teleportTab.BackgroundTransparency = 1
-teleportTab.Visible = false
+teleportTab.Visible = false  -- 초기 상태를 false로 설정하여 텔레포트 탭이 숨겨지도록
 
 -- 메인 탭 버튼
 local dodgeButton = Instance.new("TextButton", mainTab)
@@ -99,6 +99,7 @@ reloadBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 local npcButtons = {}
 local selectedNPC = nil
 local function loadNPCs()
+    -- 이전 버튼들 삭제
     for _, btn in pairs(npcButtons) do
         btn:Destroy()
     end
