@@ -1,6 +1,5 @@
 -- Services
 local Players           = game:GetService("Players")
-local Workspace         = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService        = game:GetService("RunService")
 local UIS               = game:GetService("UserInputService")
@@ -27,10 +26,8 @@ _G.AutoThorian    = false
 _G.SelectedWeapon = "Sword"
 
 local autoDodgeTask, autoQteTask, autoThorianTask
-local selectedNPC
-local npcButtons = {}
 
---=== CORE LOOPS & FUNCTIONS ===--
+--=== CORE LOOPS ===--
 
 local function startAutoDodge()
     while _G.AutoDodge do
@@ -53,8 +50,7 @@ local function startAutoQTE()
             local info    = remotes and remotes:FindFirstChild("Information")
             local rf      = info    and info:FindFirstChild("RemoteFunction")
             if rf then
-                local name = _G.SelectedWeapon .. "QTE"
-                rf:FireServer(true, name)
+                rf:FireServer(true, _G.SelectedWeapon .. "QTE")
             end
         end)
         task.wait(0.4)
@@ -75,42 +71,14 @@ local function startAutoThorianQTE()
     end
 end
 
-local function fastTeleportTo(target)
-    if not (target and target:FindFirstChild("HumanoidRootPart")) then return end
-
-    -- collision off
-    for _, p in ipairs(character:GetDescendants()) do
-        if p:IsA("BasePart") then p.CanCollide = false end
-    end
-
-    local speed     = 200
-    local startPos  = humanoidRootPart.Position
-    local endPos    = target.HumanoidRootPart.Position
-    local dir       = (endPos - startPos).Unit
-    local dist      = (endPos - startPos).Magnitude
-    local duration  = dist / speed
-    local t0        = tick()
-
-    local conn
-    conn = RunService.Heartbeat:Connect(function(dt)
-        local elapsed = tick() - t0
-        if elapsed >= duration then
-            humanoidRootPart.CFrame = CFrame.new(endPos)
-            conn:Disconnect()
-        else
-            humanoidRootPart.CFrame = humanoidRootPart.CFrame + dir * speed * dt
-        end
-    end)
-end
-
---=== BUILD REGUI WINDOW ===--
+--=== BUILD THE WINDOW ===--
 
 local Window = ReGui:TabsWindow({
     Title = "AutoSystem & Teleport",
     Size  = UDim2.fromOffset(360, 520),
 })
 
---––––– Tab 1: 메인 –––––--
+-- Tab 1: 메인
 local mainTab = Window:CreateTab({Name = "메인"})
 mainTab:Label({Text = "이곳엔 메인 기능들이 있습니다다!"})
 
@@ -173,11 +141,19 @@ for _, w in ipairs(weapons) do
     })
 end
 
---––––– Tab 2: NPC 이동 –––––--
+-- Global keybind to toggle window
+UIS.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.K then
+        Window:ToggleVisibility()
+    end
+end)
+-- 이어서 같은 스코프에서 실행된다고 가정합니다.
+
+-- Tab 2: NPC 이동
 local npcTab = Window:CreateTab({Name = "NPC 이동"})
 npcTab:Label({Text = "🧭 NPC 빠른이동"})
 
--- NPC 다시 불러오기
+-- NPC 다시 불러오기 버튼
 local reloadBtn = npcTab:Button({Text = "🔄 NPC 다시 불러오기"})
 
 -- 스크롤 캔버스
@@ -186,7 +162,7 @@ local scrollCanvas = npcTab:ScrollingCanvas({
     UiPadding = UDim.new(0,4),
 })
 
--- 이동 버튼
+-- 텔레포트 버튼
 local tpBtn = npcTab:Button({
     Text     = "🚀 선택한 NPC로 이동",
     TextSize = 16,
@@ -195,12 +171,14 @@ local tpBtn = npcTab:Button({
 -- NPC 로드 함수
 local function loadNPCs()
     selectedNPC = nil
-    -- clear
-    for _, c in ipairs(scrollCanvas.Frame:GetChildren()) do
-        if c:IsA("GuiObject") then c:Destroy() end
+    -- 클리어
+    for _, child in ipairs(scrollCanvas.Frame:GetChildren()) do
+        if child:IsA("GuiObject") then
+            child:Destroy()
+        end
     end
 
-    -- scan
+    -- NPC 스캔
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model")
         and obj:FindFirstChild("Humanoid")
@@ -212,7 +190,7 @@ local function loadNPCs()
             })
             btn.MouseButton1Click:Connect(function()
                 selectedNPC = obj
-                -- highlight
+                -- 하이라이트
                 for _, sib in ipairs(scrollCanvas.Frame:GetChildren()) do
                     if sib:IsA("TextButton") then
                         sib.BackgroundColor3 = Color3.fromRGB(90,90,90)
@@ -224,6 +202,7 @@ local function loadNPCs()
     end
 end
 
+-- 버튼 연결
 reloadBtn.MouseButton1Click:Connect(loadNPCs)
 tpBtn.MouseButton1Click:Connect(function()
     if selectedNPC then
@@ -236,12 +215,5 @@ tpBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- 최초 로드
+-- 초기 로드
 loadNPCs()
-
--- K 키로 토글
-UIS.InputBegan:Connect(function(i, proc)
-    if not proc and i.KeyCode == Enum.KeyCode.K then
-        Window:ToggleVisibility()
-    end
-end)
