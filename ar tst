@@ -142,7 +142,7 @@ end)
 
 qteButton.MouseButton1Click:Connect(function()
     _G.AutoQTE = not _G.AutoQTE
-    qteButton.Text = "자동 QTE: " .. (_G.AutoQTE and "ON" or "OFF")
+    qteButton.Text = "무기 QTE: " .. (_G.AutoQTE and "ON" or "OFF")
     if _G.AutoQTE and not autoQteTask then
         autoQteTask = task.spawn(startAutoQTE)
     elseif not _G.AutoQTE then
