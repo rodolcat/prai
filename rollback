@@ -1,7 +1,8 @@
--- 전체 코드 (로컬 UI + 서버 데이터 저장/롤백 처리)
+-- LocalScript (UI와 서버 처리)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
