@@ -1,0 +1,91 @@
+local Players          = game:GetService("Players")
+local UIS              = game:GetService("UserInputService")
+local ReplicatedStorage= game:GetService("ReplicatedStorage")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- ScreenGui 생성
+local gui = Instance.new("ScreenGui")
+gui.Name        = "AutoDodgeUI"
+gui.ResetOnSpawn= false
+gui.Parent      = playerGui
+
+-- 프레임
+local frame = Instance.new("Frame")
+frame.Size             = UDim2.new(0, 200, 0, 80)
+frame.Position         = UDim2.new(0.5, -100, 0.5, -40)
+frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+frame.Parent           = gui
+
+-- 버튼
+local button = Instance.new("TextButton", frame)
+button.Size             = UDim2.new(1, -20, 0, 40)
+button.Position         = UDim2.new(0, 10, 0, 20)
+button.Text             = "자동회피: OFF"
+button.Font             = Enum.Font.SourceSansBold
+button.TextSize         = 18
+button.TextColor3       = Color3.new(1, 1, 1)
+button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+
+-- 자동회피 변수
+_G.AutoDodge = false
+
+-- 자동회피 루프
+local function startAutoDodge()
+    while _G.AutoDodge do
+        pcall(function()
+            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+            if remotes then
+                local info = remotes:FindFirstChild("Information")
+                local rf   = info and info:FindFirstChild("RemoteFunction")
+                if rf then
+                    rf:FireServer({true, true}, "DodgeMinigame")
+                end
+            end
+        end)
+        wait(0.05)
+    end
+end
+
+-- 버튼 클릭 토글 핸들러
+button.MouseButton1Click:Connect(function()
+    _G.AutoDodge = not _G.AutoDodge
+    button.Text = "자동회피: " .. (_G.AutoDodge and "ON" or "OFF")
+    if _G.AutoDodge then
+        task.spawn(startAutoDodge)
+    end
+end)
+
+-- 수동 드래그 구현
+local dragging, startMouse, startPos = false, nil, nil
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging   = true
+        startMouse = input.Position
+        startPos   = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - startMouse
+        frame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- K키로 GUI 보이기/숨기기
+UIS.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.K then
+        frame.Visible = not frame.Visible
+    end
+end)
