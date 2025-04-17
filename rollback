@@ -1,48 +1,73 @@
-local rollbackButton = script.Parent.RollbackButton  -- Rollback 버튼
-local rejoinButton = script.Parent.RejoinButton      -- Rejoin 버튼
+-- LocalScript 위치: StarterGui 또는 StarterPlayerScripts
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
--- 로컬 저장소에서 저장된 인벤토리 상태를 저장할 변수
-local savedInventoryState = {}
+-- UI 생성
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "RollbackUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Rollback 버튼 클릭 시 인벤토리 상태 저장
+-- Rollback 버튼
+local rollbackButton = Instance.new("TextButton")
+rollbackButton.Name = "RollbackButton"
+rollbackButton.Size = UDim2.new(0.2, 0, 0.08, 0)
+rollbackButton.Position = UDim2.new(0.4, 0, 0.3, 0)
+rollbackButton.Text = "Rollback"
+rollbackButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+rollbackButton.TextColor3 = Color3.new(1, 1, 1)
+rollbackButton.Font = Enum.Font.GothamBold
+rollbackButton.TextSize = 20
+rollbackButton.Parent = screenGui
+
+-- Rejoin 버튼
+local rejoinButton = Instance.new("TextButton")
+rejoinButton.Name = "RejoinButton"
+rejoinButton.Size = UDim2.new(0.2, 0, 0.08, 0)
+rejoinButton.Position = UDim2.new(0.4, 0, 0.4, 0)
+rejoinButton.Text = "Rejoin"
+rejoinButton.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+rejoinButton.TextColor3 = Color3.new(1, 1, 1)
+rejoinButton.Font = Enum.Font.GothamBold
+rejoinButton.TextSize = 20
+rejoinButton.Parent = screenGui
+
+-- 저장할 인벤토리 상태
+local savedInventory = {}
+
+-- Rollback 버튼 기능
 rollbackButton.MouseButton1Click:Connect(function()
-    local player = game.Players.LocalPlayer
-    savedInventoryState = {}  -- 저장할 인벤토리 상태 초기화
+	savedInventory = {}
 
-    -- 플레이어의 인벤토리 상태 저장
-    for _, item in pairs(player.Backpack:GetChildren()) do
-        table.insert(savedInventoryState, item.Name)  -- 예시로 아이템 이름만 저장
-    end
+	for _, tool in pairs(player.Backpack:GetChildren()) do
+		if tool:IsA("Tool") then
+			table.insert(savedInventory, tool.Name)
+		end
+	end
 
-    -- 인벤토리 상태를 플레이어의 Attribute로 저장
-    player:SetAttribute("SavedInventoryState", savedInventoryState)
-
-    print("Rollback 상태 저장 완료!")
+	print("✅ 인벤토리 저장됨:", table.concat(savedInventory, ", "))
 end)
 
--- Rejoin 버튼 클릭 시 저장된 상태로 되돌리기
+-- Rejoin 버튼 기능 (저장된 상태로 복원)
 rejoinButton.MouseButton1Click:Connect(function()
-    local player = game.Players.LocalPlayer
+	if #savedInventory == 0 then
+		warn("❌ 저장된 인벤토리 없음")
+		return
+	end
 
-    -- 플레이어에서 저장된 상태 불러오기
-    local savedState = player:GetAttribute("SavedInventoryState")
+	-- 기존 아이템 제거
+	for _, tool in pairs(player.Backpack:GetChildren()) do
+		if tool:IsA("Tool") then
+			tool:Destroy()
+		end
+	end
 
-    if savedState then
-        -- 저장된 인벤토리 상태로 복원
-        local backpack = player.Backpack
-        -- 기존 아이템 제거 (필요에 따라)
-        for _, item in pairs(backpack:GetChildren()) do
-            item:Destroy()
-        end
-        
-        -- 저장된 상태로 아이템 복원
-        for _, itemName in pairs(savedState) do
-            local newItem = Instance.new("Tool")  -- 아이템 복원 (예시)
-            newItem.Name = itemName
-            newItem.Parent = backpack
-        end
-        print("Rejoin 완료: 저장된 상태로 돌아갔습니다.")
-    else
-        print("저장된 상태가 없습니다.")
-    end
+	-- 저장된 아이템 복원
+	for _, itemName in ipairs(savedInventory) do
+		local tool = Instance.new("Tool")
+		tool.Name = itemName
+		tool.Parent = player.Backpack
+	end
+
+	print("♻️ 복원 완료:", table.concat(savedInventory, ", "))
 end)
