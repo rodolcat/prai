@@ -29,11 +29,11 @@ dodgeButton.TextSize = 18
 dodgeButton.TextColor3 = Color3.new(1, 1, 1)
 dodgeButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
 
--- 자동 QTE 버튼
+-- 무기기 QTE 버튼
 local qteButton = Instance.new("TextButton", frame)
 qteButton.Size = UDim2.new(1, -20, 0, 40)
 qteButton.Position = UDim2.new(0, 10, 0, 60)
-qteButton.Text = "자동 QTE: OFF"
+qteButton.Text = "무기 QTE: OFF"
 qteButton.Font = Enum.Font.SourceSansBold
 qteButton.TextSize = 18
 qteButton.TextColor3 = Color3.new(1, 1, 1)
@@ -132,7 +132,7 @@ end
 -- 버튼 토글 연결
 dodgeButton.MouseButton1Click:Connect(function()
     _G.AutoDodge = not _G.AutoDodge
-    dodgeButton.Text = "자동회피: " .. (_G.AutoDodge and "ON" or "OFF")
+    dodgeButton.Text = "무기회피: " .. (_G.AutoDodge and "ON" or "OFF")
     if _G.AutoDodge and not autoDodgeTask then
         autoDodgeTask = task.spawn(startAutoDodge)
     elseif not _G.AutoDodge then
