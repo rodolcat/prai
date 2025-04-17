@@ -1,14 +1,9 @@
-local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-
 -- 롤백 데이터 저장 변수
-local rollbackData = nil
+local rollbackData = {}
 
 -- UI 생성
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "RollbackUI"
+ScreenGui.Name = "RollbackExploiter"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = game:GetService("CoreGui")
@@ -19,7 +14,7 @@ local function createButton(name, position, text, callback)
     button.Name = name
     button.Size = UDim2.new(0, 200, 0, 50)
     button.Position = position
-    button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- 빨간색 배경
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
     button.Font = Enum.Font.SourceSans
     button.TextSize = 24
@@ -32,39 +27,56 @@ end
 createButton("RollbackButton", UDim2.new(0, 100, 0, 100), "Rollback", function()
     rollbackData = {
         inventory = {},
-        position = Character.HumanoidRootPart.Position,
-        health = Character.Humanoid.Health
+        character = {}
     }
 
     -- 인벤토리 상태 저장
-    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-        table.insert(rollbackData.inventory, item.Name)
+    for _, item in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do
+        table.insert(rollbackData.inventory, {
+            name = item.Name,
+            attributes = item:GetAttributes(),
+            children = {}
+        })
     end
+
+    -- 캐릭터 상태 저장
+    local character = game.Players.LocalPlayer.Character
+    rollbackData.character = {
+        position = character.HumanoidRootPart.Position,
+        rotation = character.HumanoidRootPart.Rotation,
+        health = character.Humanoid.Health,
+        attributes = character:GetAttributes()
+    }
+
     print("Rollback point saved.")
 end)
 
 -- Rejoin 버튼 기능
-createButton("RejoinButton", UDim2.new(0, 100, 0, 160), "Rejoin", function()
+createButton("RejoinButton", UDim2.new(0, 100, 0, 160), "Rejoin and Dupe", function()
     if rollbackData then
-        -- 저장된 상태로 복원
-        for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-            item:Destroy()
+        -- 인벤토리 복제
+        for _, itemData in ipairs(rollbackData.inventory) do
+            local newItem = Instance.new(itemData.name)
+            newItem.Parent = game.Players.LocalPlayer.Backpack
+            for attribute, value in pairs(itemData.attributes) do
+                newItem:SetAttribute(attribute, value)
+            end
+            for _, child in pairs(itemData.children) do
+                local newChild = Instance.new(child.name)
+                newChild.Parent = newItem
+                newChild:SetAttributes(child.attributes)
+            end
         end
-        for _, itemName in ipairs(rollbackData.inventory) do
-            local newTool = Instance.new("Tool")
-            newTool.Name = itemName
-            newTool.Parent = LocalPlayer.Backpack
+
+        -- 캐릭터 상태 복원
+        local character = game.Players.LocalPlayer.Character
+        character:SetPrimaryPartCFrame(CFrame.fromMatrix(rollbackData.character.position, rollbackData.character.rotation))
+        character.Humanoid.Health = rollbackData.character.health
+        for attribute, value in pairs(rollbackData.character.attributes) do
+            character:SetAttribute(attribute, value)
         end
 
-        -- 위치 및 체력 복원
-        Character:SetPrimaryPartCFrame(CFrame.new(rollbackData.position))
-        Character.Humanoid.Health = rollbackData.health
-
-        -- 서버 재접속
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
-
-        -- 아이템 복원 확인
-        print("Rollback complete and rejoined to server.")
+        print("Rollback complete. Duplicated items added to inventory.")
     else
         print("No rollback point set.")
     end
