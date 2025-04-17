@@ -1,36 +1,71 @@
-local Players          = game:GetService("Players")
-local UIS              = game:GetService("UserInputService")
-local ReplicatedStorage= game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local player    = Players.LocalPlayer
+local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- ScreenGui 생성
 local gui = Instance.new("ScreenGui")
-gui.Name        = "AutoDodgeUI"
-gui.ResetOnSpawn= false
-gui.Parent      = playerGui
+gui.Name = "AutoSystemUI"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
 
 -- 프레임
 local frame = Instance.new("Frame")
-frame.Size             = UDim2.new(0, 200, 0, 80)
-frame.Position         = UDim2.new(0.5, -100, 0.5, -40)
-frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-frame.Parent           = gui
+frame.Size = UDim2.new(0, 220, 0, 220)
+frame.Position = UDim2.new(0.5, -110, 0.5, -110)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+frame.Parent = gui
 
--- 버튼
-local button = Instance.new("TextButton", frame)
-button.Size             = UDim2.new(1, -20, 0, 40)
-button.Position         = UDim2.new(0, 10, 0, 20)
-button.Text             = "자동회피: OFF"
-button.Font             = Enum.Font.SourceSansBold
-button.TextSize         = 18
-button.TextColor3       = Color3.new(1, 1, 1)
-button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+-- 자동회피 버튼
+local dodgeButton = Instance.new("TextButton", frame)
+dodgeButton.Size = UDim2.new(1, -20, 0, 40)
+dodgeButton.Position = UDim2.new(0, 10, 0, 10)
+dodgeButton.Text = "자동회피: OFF"
+dodgeButton.Font = Enum.Font.SourceSansBold
+dodgeButton.TextSize = 18
+dodgeButton.TextColor3 = Color3.new(1, 1, 1)
+dodgeButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
 
--- 자동회피 변수
+-- 자동 QTE 버튼
+local qteButton = Instance.new("TextButton", frame)
+qteButton.Size = UDim2.new(1, -20, 0, 40)
+qteButton.Position = UDim2.new(0, 10, 0, 60)
+qteButton.Text = "자동 QTE: OFF"
+qteButton.Font = Enum.Font.SourceSansBold
+qteButton.TextSize = 18
+qteButton.TextColor3 = Color3.new(1, 1, 1)
+qteButton.BackgroundColor3 = Color3.fromRGB(180, 100, 70)
+
+-- 상태 변수
 _G.AutoDodge = false
-local autoDodgeTask = nil  -- 자동회피 루프를 저장할 변수
+_G.AutoQTE = false
+_G.SelectedWeapon = "Sword"
+
+local autoDodgeTask = nil
+local autoQteTask = nil
+
+-- 무기 목록
+local weapons = {"Sword", "Spear", "Magic", "Dagger", "Fist"}
+
+-- 무기 선택 버튼 생성
+for i, weapon in ipairs(weapons) do
+    local weaponButton = Instance.new("TextButton", frame)
+    weaponButton.Size = UDim2.new(0, 90, 0, 25)
+    weaponButton.Position = UDim2.new(0, 10 + ((i - 1) % 2) * 100, 0, 110 + math.floor((i - 1) / 2) * 30)
+    weaponButton.Text = weapon
+    weaponButton.Font = Enum.Font.SourceSans
+    weaponButton.TextSize = 14
+    weaponButton.TextColor3 = Color3.new(1, 1, 1)
+    weaponButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+
+    weaponButton.MouseButton1Click:Connect(function()
+        _G.SelectedWeapon = weapon
+        print("선택된 무기:", weapon)
+    end)
+end
 
 -- 자동회피 루프
 local function startAutoDodge()
@@ -39,40 +74,66 @@ local function startAutoDodge()
             local remotes = ReplicatedStorage:FindFirstChild("Remotes")
             if remotes then
                 local info = remotes:FindFirstChild("Information")
-                local rf   = info and info:FindFirstChild("RemoteFunction")
+                local rf = info and info:FindFirstChild("RemoteFunction")
                 if rf then
                     rf:FireServer({true, true}, "DodgeMinigame")
                 end
             end
         end)
-        wait(0.2)  -- 딜레이 시간 설정
+        wait(0.2)
     end
 end
 
--- 버튼 클릭 토글 핸들러
-button.MouseButton1Click:Connect(function()
+-- 자동 QTE 루프
+local function startAutoQTE()
+    while _G.AutoQTE do
+        pcall(function()
+            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+            if remotes then
+                local info = remotes:FindFirstChild("Information")
+                local rf = info and info:FindFirstChild("RemoteFunction")
+                if rf then
+                    local qteName = _G.SelectedWeapon .. "QTE"
+                    rf:FireServer(true, qteName)
+                end
+            end
+        end)
+        wait(0.4)
+    end
+end
+
+-- 자동회피 버튼 클릭
+dodgeButton.MouseButton1Click:Connect(function()
     _G.AutoDodge = not _G.AutoDodge
-    button.Text = "자동회피: " .. (_G.AutoDodge and "ON" or "OFF")
-    
-    if _G.AutoDodge then
-        -- 이미 실행 중인 자동회피 작업이 없다면 새로 시작
-        if not autoDodgeTask then
-            autoDodgeTask = task.spawn(startAutoDodge)
-        end
-    else
-        -- 자동회피를 끄면 루프를 종료하고 변수 초기화
+    dodgeButton.Text = "자동회피: " .. (_G.AutoDodge and "ON" or "OFF")
+
+    if _G.AutoDodge and not autoDodgeTask then
+        autoDodgeTask = task.spawn(startAutoDodge)
+    elseif not _G.AutoDodge then
         autoDodgeTask = nil
     end
 end)
 
--- 수동 드래그 구현
+-- 자동 QTE 버튼 클릭
+qteButton.MouseButton1Click:Connect(function()
+    _G.AutoQTE = not _G.AutoQTE
+    qteButton.Text = "자동 QTE: " .. (_G.AutoQTE and "ON" or "OFF")
+
+    if _G.AutoQTE and not autoQteTask then
+        autoQteTask = task.spawn(startAutoQTE)
+    elseif not _G.AutoQTE then
+        autoQteTask = nil
+    end
+end)
+
+-- 드래그 기능
 local dragging, startMouse, startPos = false, nil, nil
 
 frame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging   = true
+        dragging = true
         startMouse = input.Position
-        startPos   = frame.Position
+        startPos = frame.Position
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
@@ -91,7 +152,7 @@ UIS.InputChanged:Connect(function(input)
     end
 end)
 
--- K키로 GUI 보이기/숨기기
+-- K 키로 GUI 숨기기/보이기
 UIS.InputBegan:Connect(function(input, processed)
     if not processed and input.KeyCode == Enum.KeyCode.K then
         frame.Visible = not frame.Visible
