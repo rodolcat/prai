@@ -1,3 +1,4 @@
+-- ReGui와 InsertService 설정
 local InsertService = game:GetService("InsertService")
 
 local ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'))()
@@ -8,70 +9,167 @@ ReGui:Init({
     Prefabs = InsertService:LoadLocalAsset(PrefabsId)
 })
 
--- TabsWindow 생성
+-- ReGui 기본 창 설정
 local Window = ReGui:TabsWindow({
-    Title = "Tabs window demo!",
-    Size = UDim2.fromOffset(300, 200)
+    Title = "기능 설정",
+    Size = UDim2.fromOffset(300, 300)
 })
 
 local Names = {"메인"}
 
+-- ReGui:DefineElement를 사용하여 기능 토글 버튼을 정의
+ReGui:DefineElement("ToggleButton", {
+    Base = {
+        Text = "기능 토글",
+        State = false,  -- 초기 상태는 비활성화
+    },
+
+    Create = function(self, Config)
+        -- 설정에서 텍스트와 상태를 가져옵니다
+        local Text = Config.Text
+        local State = Config.State
+
+        -- 버튼을 생성
+        local ToggleButton = Instance.new("TextButton")
+        ToggleButton.Size = UDim2.new(1, 0, 0, 40)
+        ToggleButton.Text = Text
+        ToggleButton.Font = Enum.Font.SourceSans
+        ToggleButton.TextSize = 18
+        ToggleButton.TextColor3 = Color3.new(1, 1, 1)
+        ToggleButton.BackgroundColor3 = State and Color3.fromRGB(70, 130, 180) or Color3.fromRGB(180, 70, 130)
+
+        -- 상태 변화에 따른 기능 처리
+        ToggleButton.MouseButton1Click:Connect(function()
+            State = not State
+            ToggleButton.Text = State and (Text .. " 활성화됨") or (Text .. " 비활성화됨")
+            ToggleButton.BackgroundColor3 = State and Color3.fromRGB(70, 130, 180) or Color3.fromRGB(180, 70, 130)
+
+            -- 상태가 변경될 때마다 해당 기능 활성화/비활성화 처리
+            if Text == "자동회피 기능" then
+                _G.AutoDodge = State
+                print("자동회피 기능 상태:", State and "활성화됨" or "비활성화됨")
+            elseif Text == "무기 QTE 기능" then
+                _G.AutoQTE = State
+                print("무기 QTE 기능 상태:", State and "활성화됨" or "비활성화됨")
+            elseif Text == "토리안 QTE 기능" then
+                _G.AutoThorian = State
+                print("토리안 QTE 기능 상태:", State and "활성화됨" or "비활성화됨")
+            end
+        end)
+
+        -- 반환할 요소
+        return ToggleButton
+    end,
+})
+
+-- 메인 탭에 토글 버튼 추가
 for _, Name in next, Names do
-    --// Tab 생성
     local Tab = Window:CreateTab({
         Name = Name
     })
 
-    --// Tab에 Label 추가
-    Tab:Label({
-        Text = "이곳엔 메인 기능들이 있습니다!"
-    })
-
-    --// 자동회피 기능을 위한 체크박스 생성
-    local AutoDodgeToggle = Tab:Toggle({
+    -- 각 기능을 토글 버튼으로 추가
+    Tab:ToggleButton({
         Text = "자동회피 기능",
-        Callback = function(state)
-            if state then
-                print("자동회피 기능이 활성화되었습니다!")
-                -- 여기서 자동 회피 기능 활성화 로직을 추가하세요
-                _G.AutoDodge = true
-            else
-                print("자동회피 기능이 비활성화되었습니다!")
-                -- 자동 회피 비활성화 로직
-                _G.AutoDodge = false
-            end
-        end
+        State = _G.AutoDodge
     })
 
-    --// 토리안 QTE 기능을 위한 체크박스 생성
-    local ThorianQTE_Toggle = Tab:Toggle({
-        Text = "토리안 QTE 기능",
-        Callback = function(state)
-            if state then
-                print("토리안 QTE 기능이 활성화되었습니다!")
-                -- 여기서 토리안 QTE 기능 활성화 로직을 추가하세요
-                _G.AutoThorian = true
-            else
-                print("토리안 QTE 기능이 비활성화되었습니다!")
-                -- 토리안 QTE 비활성화 로직
-                _G.AutoThorian = false
-            end
-        end
-    })
-
-    --// 무기 QTE 기능을 위한 체크박스 생성
-    local WeaponQTE_Toggle = Tab:Toggle({
+    Tab:ToggleButton({
         Text = "무기 QTE 기능",
-        Callback = function(state)
-            if state then
-                print("무기 QTE 기능이 활성화되었습니다!")
-                -- 여기서 무기 QTE 기능 활성화 로직을 추가하세요
-                _G.AutoQTE = true
-            else
-                print("무기 QTE 기능이 비활성화되었습니다!")
-                -- 무기 QTE 비활성화 로직
-                _G.AutoQTE = false
-            end
-        end
+        State = _G.AutoQTE
+    })
+
+    Tab:ToggleButton({
+        Text = "토리안 QTE 기능",
+        State = _G.AutoThorian
     })
 end
+
+-- 실제 기능 구현
+
+-- 자동회피 루프
+local function startAutoDodge()
+    while _G.AutoDodge do
+        pcall(function()
+            local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
+            if remotes then
+                local info = remotes:FindFirstChild("Information")
+                local rf = info and info:FindFirstChild("RemoteFunction")
+                if rf then
+                    rf:FireServer({true, true}, "DodgeMinigame")
+                end
+            end
+        end)
+        wait(0.2)
+    end
+end
+
+-- 무기 QTE 루프
+local function startAutoQTE()
+    while _G.AutoQTE do
+        pcall(function()
+            local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
+            if remotes then
+                local info = remotes:FindFirstChild("Information")
+                local rf = info and info:FindFirstChild("RemoteFunction")
+                if rf then
+                    local qteName = _G.SelectedWeapon .. "QTE"
+                    rf:FireServer(true, qteName)
+                end
+            end
+        end)
+        wait(0.4)
+    end
+end
+
+-- 토리안 QTE 루프
+local function startAutoThorianQTE()
+    while _G.AutoThorian do
+        pcall(function()
+            local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
+            if remotes then
+                local info = remotes:FindFirstChild("Information")
+                local rf = info and info:FindFirstChild("RemoteFunction")
+                if rf then
+                    rf:FireServer(true, "ThorianQTE")
+                end
+            end
+        end)
+        wait(0.4)
+    end
+end
+
+-- 드래그 기능
+local UIS = game:GetService("UserInputService")
+local dragging, startMouse, startPos = false, nil, nil
+
+-- 드래그 기능을 위한 코드 (위치 이동)
+Window.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        startMouse = input.Position
+        startPos = Window.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - startMouse
+        Window.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- K키로 GUI 숨기기/보이기
+UIS.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.K then
+        Window.Visible = not Window.Visible
+    end
+end)
