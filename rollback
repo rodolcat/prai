@@ -1,36 +1,32 @@
--- 전체 스크립트 (StarterPlayerScripts에 배치) - UI, RemoteEvent, 데이터 처리
+-- 전체 코드 (로컬 UI + 서버 데이터 저장/롤백 처리)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-
--- UI 코드 (LocalScript)
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- ScreenGui 자동 생성 (UI 배치)
+-- 1. UI 코드: 화면에 버튼 표시
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = playerGui
 
--- SaveButton UI 자동 생성
 local saveButton = Instance.new("TextButton")
 saveButton.Size = UDim2.new(0, 200, 0, 50)
 saveButton.Position = UDim2.new(0.5, -100, 0.5, -25) -- 화면 가운데 배치
 saveButton.Text = "데이터 저장"
 saveButton.Parent = screenGui
 
--- 버튼 클릭 시 서버로 저장 요청 보내는 이벤트
-saveButton.MouseButton1Click:Connect(function()
-    -- 서버로 SaveButton 리모트 이벤트 호출
-    ReplicatedStorage:WaitForChild("SaveButton"):FireServer()
-end)
-
--- 서버 코드 (ServerScript)
-
--- 데이터 저장용 테이블과 변수 설정
+-- 2. 데이터 저장과 롤백을 위한 변수 설정
 local playerInventories = {}
 local canSaveData = {}  -- 저장을 허용할 플레이어를 추적
 
--- 데이터 저장 함수
+-- 3. SaveButton 이벤트 (버튼 클릭 시 서버로 데이터 저장 요청)
+saveButton.MouseButton1Click:Connect(function()
+    -- 서버로 SaveButton 리모트 이벤트 호출
+    local saveButtonEvent = ReplicatedStorage:WaitForChild("SaveButton")
+    saveButtonEvent:FireServer()
+end)
+
+-- 4. 데이터 저장 함수 (플레이어의 인벤토리 저장)
 function savePlayerData(player)
     if not canSaveData[player.UserId] then
         -- 데이터 저장 불가 상태
@@ -44,28 +40,28 @@ function savePlayerData(player)
     print(player.Name .. "의 데이터가 저장되었습니다.")
 end
 
--- 플레이어 인벤토리 가져오기 (예시로 '검' 포함)
+-- 5. 플레이어 인벤토리 가져오기 (예시로 '검' 포함)
 function getPlayerInventory(player)
     return playerInventories[player.UserId] or {"검"}  -- 기본적으로 '검'을 갖고 있음
 end
 
--- 인벤토리 설정하기
+-- 6. 인벤토리 설정하기
 function setPlayerInventory(player, inventory)
     playerInventories[player.UserId] = inventory
 end
 
--- 리모트 이벤트 자동 생성 (ReplicatedStorage에 SaveButton)
+-- 7. 리모트 이벤트 자동 생성 (ReplicatedStorage에 SaveButton)
 local saveButtonEvent = Instance.new("RemoteEvent")
 saveButtonEvent.Name = "SaveButton"
 saveButtonEvent.Parent = ReplicatedStorage
 
--- 리모트 이벤트 처리 (UI에서 서버로 전송되는 데이터 저장 요청)
+-- 8. 리모트 이벤트 처리 (UI에서 서버로 전송되는 데이터 저장 요청)
 saveButtonEvent.OnServerEvent:Connect(function(player)
     canSaveData[player.UserId] = true  -- 저장 허용
     savePlayerData(player)  -- 데이터 저장
 end)
 
--- 리조인 시 데이터를 롤백
+-- 9. 리조인 시 데이터를 롤백
 Players.PlayerAdded:Connect(function(player)
     -- 리조인 시 저장된 데이터가 있다면 복원
     local savedData = playerInventories[player.UserId]
