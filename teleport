@@ -16,36 +16,37 @@ gui.Parent = playerGui
 
 -- 프레임
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 400)
-frame.Position = UDim2.new(0.85, -150, 0.5, -200)
+frame.Size = UDim2.new(0, 300, 0, 450)
+frame.Position = UDim2.new(0.85, -150, 0.5, -225)
 frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 frame.Active = true
-frame.Draggable = true
 frame.Parent = gui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
 
 -- 타이틀
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 30)
+title.Size = UDim2.new(1, -40, 0, 30)
+title.Position = UDim2.new(0, 10, 0, 5)
 title.Text = "🧭 NPC 빠른이동"
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 18
 title.TextColor3 = Color3.new(1, 1, 1)
+title.TextXAlignment = Enum.TextXAlignment.Left
 
--- X 버튼 (닫기 버튼)
+-- X 버튼
 local closeBtn = Instance.new("TextButton", frame)
-closeBtn.Size = UDim2.new(0, 30, 0, 30)
-closeBtn.Position = UDim2.new(1, -35, 0, 5)  -- 오른쪽 상단
-closeBtn.Text = "X"
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.Position = UDim2.new(1, -30, 0, 5)
+closeBtn.Text = "❌"
 closeBtn.Font = Enum.Font.SourceSansBold
 closeBtn.TextSize = 16
 closeBtn.TextColor3 = Color3.new(1, 1, 1)
-closeBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+closeBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 
 closeBtn.MouseButton1Click:Connect(function()
-    gui:Destroy()  -- GUI 닫기
+    frame.Visible = false
 end)
 
 -- 다시 불러오기 버튼
@@ -59,10 +60,22 @@ reloadBtn.TextColor3 = Color3.new(1, 1, 1)
 reloadBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 Instance.new("UICorner", reloadBtn).CornerRadius = UDim.new(0, 6)
 
+-- 검색창
+local searchBox = Instance.new("TextBox", frame)
+searchBox.Size = UDim2.new(1, -20, 0, 30)
+searchBox.Position = UDim2.new(0, 10, 0, 80)
+searchBox.PlaceholderText = "🔍 NPC 이름 검색"
+searchBox.Text = ""
+searchBox.Font = Enum.Font.SourceSans
+searchBox.TextSize = 14
+searchBox.TextColor3 = Color3.new(1, 1, 1)
+searchBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 6)
+
 -- 스크롤 컨테이너
 local scrollFrame = Instance.new("ScrollingFrame", frame)
-scrollFrame.Size = UDim2.new(1, -20, 1, -140)
-scrollFrame.Position = UDim2.new(0, 10, 0, 80)
+scrollFrame.Size = UDim2.new(1, -20, 1, -190)
+scrollFrame.Position = UDim2.new(0, 10, 0, 120)
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 scrollFrame.ScrollBarThickness = 8
 scrollFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -84,14 +97,17 @@ local function loadNPCs()
     npcButtons = {}
     selectedNPC = nil
 
+    local keyword = searchBox.Text:lower()
     local allNPCs = {}
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
-            table.insert(allNPCs, obj)
+            if keyword == "" or obj.Name:lower():find(keyword) then
+                table.insert(allNPCs, obj)
+            end
         end
     end
 
-    for i, npc in ipairs(allNPCs) do
+    for _, npc in ipairs(allNPCs) do
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, 0, 0, 25)
         btn.Text = npc.Name
@@ -118,21 +134,18 @@ end
 local function fastTeleportTo(target)
     if not target or not target:FindFirstChild("HumanoidRootPart") then return end
 
-    -- 이동 속도 설정
     local speed = 200
     local targetPos = target.HumanoidRootPart.Position
     local direction = (targetPos - humanoidRootPart.Position).Unit
     local distance = (targetPos - humanoidRootPart.Position).Magnitude
     local duration = distance / speed
 
-    -- 충돌 감지 비활성화
     for _, part in ipairs(character:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CanCollide = false
         end
     end
 
-    -- 텔레포트 애니메이션
     local startTime = tick()
     local connection
     connection = RunService.Heartbeat:Connect(function()
@@ -146,7 +159,7 @@ local function fastTeleportTo(target)
     end)
 end
 
--- 텔레포트 버튼 (항상 하단 고정)
+-- 텔레포트 버튼
 local tpBtn = Instance.new("TextButton", frame)
 tpBtn.Size = UDim2.new(1, -20, 0, 30)
 tpBtn.Position = UDim2.new(0, 10, 1, -40)
@@ -170,5 +183,42 @@ end)
 -- 리로드 버튼 연결
 reloadBtn.MouseButton1Click:Connect(loadNPCs)
 
+-- 검색 텍스트 입력 시 필터링
+searchBox:GetPropertyChangedSignal("Text"):Connect(loadNPCs)
+
 -- 처음 로드
 loadNPCs()
+
+-- 커스텀 드래그 기능
+local dragging = false
+local dragInput, dragStart, startPos
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
