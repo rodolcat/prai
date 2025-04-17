@@ -1,105 +1,48 @@
--- 하나의 스크립트로 통합된 코드
+local rollbackButton = script.Parent.RollbackButton  -- Rollback 버튼
+local rejoinButton = script.Parent.RejoinButton      -- Rejoin 버튼
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
+-- 로컬 저장소에서 저장된 인벤토리 상태를 저장할 변수
+local savedInventoryState = {}
 
--- 클라이언트 측
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+-- Rollback 버튼 클릭 시 인벤토리 상태 저장
+rollbackButton.MouseButton1Click:Connect(function()
+    local player = game.Players.LocalPlayer
+    savedInventoryState = {}  -- 저장할 인벤토리 상태 초기화
 
--- 1. UI 코드: 화면에 버튼 표시
-local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = playerGui
-
-local saveButton = Instance.new("TextButton")
-saveButton.Size = UDim2.new(0, 200, 0, 50)
-saveButton.Position = UDim2.new(0.5, -100, 0.5, -25) -- 화면 가운데 배치
-saveButton.Text = "데이터 저장"
-saveButton.Parent = screenGui
-
--- 2. 데이터 저장과 롤백을 위한 변수 설정
-local playerInventories = {}
-local canSaveData = {}  -- 저장을 허용할 플레이어를 추적
-
--- 3. SaveButton 이벤트 (버튼 클릭 시 서버로 데이터 저장 요청)
-saveButton.MouseButton1Click:Connect(function()
-    -- 서버로 SaveButton 리모트 이벤트 호출
-    local saveButtonEvent = ReplicatedStorage:WaitForChild("SaveButton")
-    saveButtonEvent:FireServer()
-end)
-
--- 4. 데이터 저장 함수 (플레이어의 인벤토리 저장)
-function savePlayerData(player)
-    if not canSaveData[player.UserId] then
-        -- 데이터 저장 불가 상태
-        print(player.Name .. "는 저장할 수 없습니다. 버튼을 눌러야 합니다.")
-        return
+    -- 플레이어의 인벤토리 상태 저장
+    for _, item in pairs(player.Backpack:GetChildren()) do
+        table.insert(savedInventoryState, item.Name)  -- 예시로 아이템 이름만 저장
     end
 
-    -- 현재 플레이어의 데이터를 저장
-    local inventory = getPlayerInventory(player)
-    playerInventories[player.UserId] = inventory
-    print(player.Name .. "의 데이터가 저장되었습니다.")
-end
+    -- 인벤토리 상태를 플레이어의 Attribute로 저장
+    player:SetAttribute("SavedInventoryState", savedInventoryState)
 
--- 5. 플레이어 인벤토리 가져오기 (예시로 '검' 포함)
-function getPlayerInventory(player)
-    return playerInventories[player.UserId] or {"검"}  -- 기본적으로 '검'을 갖고 있음
-end
-
--- 6. 인벤토리 설정하기
-function setPlayerInventory(player, inventory)
-    playerInventories[player.UserId] = inventory
-end
-
--- 7. 리모트 이벤트 자동 생성 (ReplicatedStorage에 SaveButton)
-local saveButtonEvent = Instance.new("RemoteEvent")
-saveButtonEvent.Name = "SaveButton"
-saveButtonEvent.Parent = ReplicatedStorage
-
--- 8. 리모트 이벤트 처리 (UI에서 서버로 전송되는 데이터 저장 요청)
-saveButtonEvent.OnServerEvent:Connect(function(player)
-    canSaveData[player.UserId] = true  -- 저장 허용
-    savePlayerData(player)  -- 데이터 저장
+    print("Rollback 상태 저장 완료!")
 end)
 
--- 9. 리조인 시 데이터를 롤백
-Players.PlayerAdded:Connect(function(player)
-    -- 리조인 시 저장된 데이터가 있다면 복원
-    local savedData = playerInventories[player.UserId]
-    if savedData then
-        -- 저장된 데이터로 복원
-        setPlayerInventory(player, savedData)
-        print(player.Name .. " 리조인: 데이터 롤백됨")
+-- Rejoin 버튼 클릭 시 저장된 상태로 되돌리기
+rejoinButton.MouseButton1Click:Connect(function()
+    local player = game.Players.LocalPlayer
+
+    -- 플레이어에서 저장된 상태 불러오기
+    local savedState = player:GetAttribute("SavedInventoryState")
+
+    if savedState then
+        -- 저장된 인벤토리 상태로 복원
+        local backpack = player.Backpack
+        -- 기존 아이템 제거 (필요에 따라)
+        for _, item in pairs(backpack:GetChildren()) do
+            item:Destroy()
+        end
+        
+        -- 저장된 상태로 아이템 복원
+        for _, itemName in pairs(savedState) do
+            local newItem = Instance.new("Tool")  -- 아이템 복원 (예시)
+            newItem.Name = itemName
+            newItem.Parent = backpack
+        end
+        print("Rejoin 완료: 저장된 상태로 돌아갔습니다.")
     else
-        -- 초기화 상태
-        setPlayerInventory(player, {"검"})
-        print(player.Name .. " 초기화됨 (검 추가됨)")
-    end
-end)
-
--- 10. 서버 스크립트: 리모트 이벤트 처리
-local saveButtonEventServer = Instance.new("RemoteEvent")
-saveButtonEventServer.Name = "SaveButton"
-saveButtonEventServer.Parent = ReplicatedStorage
-
-saveButtonEventServer.OnServerEvent:Connect(function(player)
-    -- 데이터 저장
-    local inventory = {"검"}  -- 예시로 '검'만 저장
-    player:SetAttribute("Inventory", inventory)  -- 플레이어의 속성으로 저장
-    print(player.Name .. "의 데이터가 저장됨.")
-end)
-
--- 11. 리조인 시 플레이어 데이터 롤백
-Players.PlayerAdded:Connect(function(player)
-    local savedInventory = player:GetAttribute("Inventory")  -- 리조인 시 저장된 데이터 불러오기
-
-    if savedInventory then
-        -- 저장된 데이터로 롤백 처리
-        print(player.Name .. " 리조인: 데이터 롤백됨.")
-    else
-        -- 초기 상태로 설정 (예시: '검'을 기본으로 제공)
-        player:SetAttribute("Inventory", {"검"})
-        print(player.Name .. " 리조인: 기본 상태로 설정됨.")
+        print("저장된 상태가 없습니다.")
     end
 end)
