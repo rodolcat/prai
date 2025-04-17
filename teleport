@@ -154,37 +154,9 @@ reloadBtn.MouseButton1Click:Connect(loadNPCs)
 -- 처음 로드
 loadNPCs()
 
--- K 키로 UI 숨기기/보이기
-UIS.InputBegan:Connect(function(input, processed)
-	if not processed and input.KeyCode == Enum.KeyCode.K then
-		frame.Visible = not frame.Visible
-	end
-end)
-
 -- 드래그 기능 구현
-local dragging = false
-local startMousePosition = nil
-local startFramePosition = nil
+local dragging, dragStart, startPos = false, nil, nil
 
-frame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = true
-		startMousePosition = input.Position
-		startFramePosition = frame.Position
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-			end
-		end)
-	end
-end)
-
-UIS.InputChanged:Connect(function(input)
-	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-		local delta = input.Position - startMousePosition
-		frame.Position = UDim2.new(
-			startFramePosition.X.Scale, startFramePosition.X.Offset + delta.X,
-			startFramePosition.Y.Scale, startFramePosition.Y.Offset + delta.Y
-		)
-	end
-end)
+frame.InputB
+::contentReference[oaicite:3]{index=3}
+ 
