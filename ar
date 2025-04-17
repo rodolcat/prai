@@ -1,16 +1,27 @@
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UIS = game:GetService("UserInputService")
 local InsertService = game:GetService("InsertService")
-
-local player = Players.LocalPlayer
 
 local ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'))()
 local PrefabsId = "rbxassetid://" .. ReGui.PrefabsId
 
+--// Declare the Prefabs asset
 ReGui:Init({
 	Prefabs = InsertService:LoadLocalAsset(PrefabsId)
 })
+local Window = ReGui:TabsWindow({
+	Title = "Tabs window demo!",
+	Size = UDim2.fromOffset(300, 200)
+}) --> TabSelector & WindowClass
+
+local Names = {"자동QTE", "Broccoli", "Cucumber"}
+
+for _, Name in next, Names do
+	--// Create tab
+	local Tab = Window:CreateTab({Name=Name}) --> Canvas
+	Tab:Label({
+		Text = `This is the {Name} tab!`
+	})
+end
+local AutoTab = Window:CreateTab({Name = "자동QTE"}) -- 기존에 이미 이 이름 있음
 
 -- 상태 변수
 _G.AutoDodge = false
@@ -18,117 +29,105 @@ _G.AutoQTE = false
 _G.AutoThorian = false
 _G.SelectedWeapon = "Sword"
 
--- 루프 기능
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local autoDodgeTask, autoQteTask, autoThorianTask
+
+-- 루프 함수 정의
 local function startAutoDodge()
-	while _G.AutoDodge do
-		pcall(function()
-			local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-			if remotes then
-				local info = remotes:FindFirstChild("Information")
-				local rf = info and info:FindFirstChild("RemoteFunction")
-				if rf then
-					rf:FireServer({true, true}, "DodgeMinigame")
-				end
-			end
-		end)
-		wait(0.2)
-	end
+    while _G.AutoDodge do
+        pcall(function()
+            local rf = ReplicatedStorage:FindFirstChild("Remotes")
+                and ReplicatedStorage.Remotes:FindFirstChild("Information")
+                and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
+            if rf then
+                rf:FireServer({true, true}, "DodgeMinigame")
+            end
+        end)
+        task.wait(0.2)
+    end
 end
 
 local function startAutoQTE()
-	while _G.AutoQTE do
-		pcall(function()
-			local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-			if remotes then
-				local info = remotes:FindFirstChild("Information")
-				local rf = info and info:FindFirstChild("RemoteFunction")
-				if rf then
-					rf:FireServer(true, _G.SelectedWeapon .. "QTE")
-				end
-			end
-		end)
-		wait(0.4)
-	end
+    while _G.AutoQTE do
+        pcall(function()
+            local rf = ReplicatedStorage:FindFirstChild("Remotes")
+                and ReplicatedStorage.Remotes:FindFirstChild("Information")
+                and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
+            if rf then
+                local qteName = _G.SelectedWeapon .. "QTE"
+                rf:FireServer(true, qteName)
+            end
+        end)
+        task.wait(0.4)
+    end
 end
 
 local function startAutoThorianQTE()
-	while _G.AutoThorian do
-		pcall(function()
-			local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-			if remotes then
-				local info = remotes:FindFirstChild("Information")
-				local rf = info and info:FindFirstChild("RemoteFunction")
-				if rf then
-					rf:FireServer(true, "ThorianQTE")
-				end
-			end
-		end)
-		wait(0.4)
-	end
+    while _G.AutoThorian do
+        pcall(function()
+            local rf = ReplicatedStorage:FindFirstChild("Remotes")
+                and ReplicatedStorage.Remotes:FindFirstChild("Information")
+                and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
+            if rf then
+                rf:FireServer(true, "ThorianQTE")
+            end
+        end)
+        task.wait(0.4)
+    end
 end
 
--- ReGui 윈도우 구성
-local Window = ReGui:TabsWindow({
-	Title = "Auto System UI",
-	Size = UDim2.fromOffset(350, 280)
+-- 버튼 UI 추가
+AutoTab:Button({
+    Text = "자동회피: OFF",
+    Callback = function(self)
+        _G.AutoDodge = not _G.AutoDodge
+        self:SetText("자동회피: " .. (_G.AutoDodge and "ON" or "OFF"))
+        if _G.AutoDodge and not autoDodgeTask then
+            autoDodgeTask = task.spawn(startAutoDodge)
+        elseif not _G.AutoDodge then
+            autoDodgeTask = nil
+        end
+    end
 })
 
--- 자동회피 탭
-local DodgeTab = Window:CreateTab({ Name = "자동회피" })
-local dodgeButton = DodgeTab:Button({
-	Text = "자동회피: OFF",
-	Callback = function(btn)
-		_G.AutoDodge = not _G.AutoDodge
-		btn:SetText("자동회피: " .. (_G.AutoDodge and "ON" or "OFF"))
-		if _G.AutoDodge then
-			task.spawn(startAutoDodge)
-		end
-	end
+AutoTab:Button({
+    Text = "무기 QTE: OFF",
+    Callback = function(self)
+        _G.AutoQTE = not _G.AutoQTE
+        self:SetText("무기 QTE: " .. (_G.AutoQTE and "ON" or "OFF"))
+        if _G.AutoQTE and not autoQteTask then
+            autoQteTask = task.spawn(startAutoQTE)
+        elseif not _G.AutoQTE then
+            autoQteTask = nil
+        end
+    end
 })
 
--- 무기 QTE 탭
-local QteTab = Window:CreateTab({ Name = "무기 QTE" })
-
-local qteButton = QteTab:Button({
-	Text = "무기 QTE: OFF",
-	Callback = function(btn)
-		_G.AutoQTE = not _G.AutoQTE
-		btn:SetText("무기 QTE: " .. (_G.AutoQTE and "ON" or "OFF"))
-		if _G.AutoQTE then
-			task.spawn(startAutoQTE)
-		end
-	end
+AutoTab:Button({
+    Text = "토리안 QTE: OFF",
+    Callback = function(self)
+        _G.AutoThorian = not _G.AutoThorian
+        self:SetText("토리안 QTE: " .. (_G.AutoThorian and "ON" or "OFF"))
+        if _G.AutoThorian and not autoThorianTask then
+            autoThorianTask = task.spawn(startAutoThorianQTE)
+        elseif not _G.AutoThorian then
+            autoThorianTask = nil
+        end
+    end
 })
 
-QteTab:Label({ Text = "무기 선택:" })
+-- 무기 선택 버튼들
 local weapons = {"Sword", "Spear", "Magic", "Dagger", "Fist"}
 
+AutoTab:Label({ Text = "무기 선택:" })
+
 for _, weapon in ipairs(weapons) do
-	QteTab:Button({
-		Text = weapon,
-		Callback = function()
-			_G.SelectedWeapon = weapon
-			print("선택된 무기:", weapon)
-		end
-	})
+    AutoTab:Button({
+        Text = weapon,
+        Callback = function()
+            _G.SelectedWeapon = weapon
+            print("선택된 무기:", weapon)
+        end
+    })
 end
-
--- 토리안 QTE 탭
-local ThorianTab = Window:CreateTab({ Name = "토리안 QTE" })
-local thorianButton = ThorianTab:Button({
-	Text = "토리안 QTE: OFF",
-	Callback = function(btn)
-		_G.AutoThorian = not _G.AutoThorian
-		btn:SetText("토리안 QTE: " .. (_G.AutoThorian and "ON" or "OFF"))
-		if _G.AutoThorian then
-			task.spawn(startAutoThorianQTE)
-		end
-	end
-})
-
--- K 키로 UI 숨기기
-UIS.InputBegan:Connect(function(input, processed)
-	if not processed and input.KeyCode == Enum.KeyCode.K then
-		Window:SetFlag("Hidden", not Window:GetFlag("Hidden"))
-	end
-end)
