@@ -1,0 +1,163 @@
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- GUI 생성
+local gui = Instance.new("ScreenGui")
+gui.Name = "TeleportUI"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+-- 프레임
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 400)
+frame.Position = UDim2.new(0.85, -150, 0.5, -200)
+frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+
+-- 타이틀
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "🧭 NPC 빠른이동"
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 18
+title.TextColor3 = Color3.new(1, 1, 1)
+
+-- 다시 불러오기 버튼
+local reloadBtn = Instance.new("TextButton", frame)
+reloadBtn.Size = UDim2.new(1, -20, 0, 30)
+reloadBtn.Position = UDim2.new(0, 10, 0, 40)
+reloadBtn.Text = "🔄 NPC 다시 불러오기"
+reloadBtn.Font = Enum.Font.SourceSansBold
+reloadBtn.TextSize = 14
+reloadBtn.TextColor3 = Color3.new(1, 1, 1)
+reloadBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+Instance.new("UICorner", reloadBtn).CornerRadius = UDim.new(0, 6)
+
+-- 스크롤 컨테이너
+local scrollFrame = Instance.new("ScrollingFrame", frame)
+scrollFrame.Size = UDim2.new(1, -20, 1, -140)
+scrollFrame.Position = UDim2.new(0, 10, 0, 80)
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollFrame.ScrollBarThickness = 8
+scrollFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrollFrame.ClipsDescendants = true
+
+local UIList = Instance.new("UIListLayout", scrollFrame)
+UIList.Padding = UDim.new(0, 5)
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local npcButtons = {}
+local selectedNPC = nil
+
+-- NPC 불러오기 함수
+local function loadNPCs()
+	for _, btn in pairs(npcButtons) do
+		btn:Destroy()
+	end
+	npcButtons = {}
+	selectedNPC = nil
+
+	local allNPCs = {}
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+			table.insert(allNPCs, obj)
+		end
+	end
+
+	for _, npc in ipairs(allNPCs) do
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(1, 0, 0, 25)
+		btn.Text = npc.Name
+		btn.Font = Enum.Font.SourceSans
+		btn.TextSize = 14
+		btn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+		btn.TextColor3 = Color3.new(1, 1, 1)
+		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+
+		btn.MouseButton1Click:Connect(function()
+			selectedNPC = npc
+			for _, other in ipairs(npcButtons) do
+				other.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+			end
+			btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+		end)
+
+		btn.Parent = scrollFrame
+		table.insert(npcButtons, btn)
+	end
+end
+
+-- 이동 함수
+local function fastTeleportTo(target)
+	if not target or not target:FindFirstChild("HumanoidRootPart") then return end
+
+	local speed = 200
+	local targetPos = target.HumanoidRootPart.Position
+	local direction = (targetPos - humanoidRootPart.Position).Unit
+	local distance = (targetPos - humanoidRootPart.Position).Magnitude
+	local duration = distance / speed
+
+	for _, part in ipairs(character:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.CanCollide = false
+		end
+	end
+
+	local startTime = tick()
+	local connection
+	connection = RunService.Heartbeat:Connect(function()
+		local elapsed = tick() - startTime
+		if elapsed >= duration then
+			humanoidRootPart.CFrame = CFrame.new(targetPos)
+			connection:Disconnect()
+			return
+		end
+		humanoidRootPart.CFrame = humanoidRootPart.CFrame + direction * speed * RunService.Heartbeat:Wait()
+	end)
+end
+
+-- 텔레포트 버튼
+local tpBtn = Instance.new("TextButton", frame)
+tpBtn.Size = UDim2.new(1, -20, 0, 30)
+tpBtn.Position = UDim2.new(0, 10, 1, -40)
+tpBtn.Text = "🚀 선택한 NPC로 이동"
+tpBtn.Font = Enum.Font.SourceSansBold
+tpBtn.TextSize = 16
+tpBtn.TextColor3 = Color3.new(1, 1, 1)
+tpBtn.BackgroundColor3 = Color3.fromRGB(0, 128, 255)
+Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 6)
+
+tpBtn.MouseButton1Click:Connect(function()
+	if selectedNPC then
+		fastTeleportTo(selectedNPC)
+	else
+		tpBtn.Text = "❗ NPC 선택하세요"
+		wait(1)
+		tpBtn.Text = "🚀 선택한 NPC로 이동"
+	end
+end)
+
+-- 리로드 버튼 연결
+reloadBtn.MouseButton1Click:Connect(loadNPCs)
+
+-- 처음 로드
+loadNPCs()
+
+-- K 키로 UI 숨기기/보이기
+UIS.InputBegan:Connect(function(input, processed)
+	if not processed and input.KeyCode == Enum.KeyCode.K then
+		frame.Visible = not frame.Visible
+	end
+end)
