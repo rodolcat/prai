@@ -158,6 +158,9 @@ loadNPCs()
 local dragging, dragInput, dragStart, startPos
 
 frame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Mouse
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+
 ::contentReference[oaicite:2]{index=2}
  
