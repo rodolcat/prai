@@ -1,8 +1,9 @@
--- LocalScript (UI와 서버 처리)
+-- 하나의 스크립트로 통합된 코드
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
+-- 클라이언트 측
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -74,5 +75,31 @@ Players.PlayerAdded:Connect(function(player)
         -- 초기화 상태
         setPlayerInventory(player, {"검"})
         print(player.Name .. " 초기화됨 (검 추가됨)")
+    end
+end)
+
+-- 10. 서버 스크립트: 리모트 이벤트 처리
+local saveButtonEventServer = Instance.new("RemoteEvent")
+saveButtonEventServer.Name = "SaveButton"
+saveButtonEventServer.Parent = ReplicatedStorage
+
+saveButtonEventServer.OnServerEvent:Connect(function(player)
+    -- 데이터 저장
+    local inventory = {"검"}  -- 예시로 '검'만 저장
+    player:SetAttribute("Inventory", inventory)  -- 플레이어의 속성으로 저장
+    print(player.Name .. "의 데이터가 저장됨.")
+end)
+
+-- 11. 리조인 시 플레이어 데이터 롤백
+Players.PlayerAdded:Connect(function(player)
+    local savedInventory = player:GetAttribute("Inventory")  -- 리조인 시 저장된 데이터 불러오기
+
+    if savedInventory then
+        -- 저장된 데이터로 롤백 처리
+        print(player.Name .. " 리조인: 데이터 롤백됨.")
+    else
+        -- 초기 상태로 설정 (예시: '검'을 기본으로 제공)
+        player:SetAttribute("Inventory", {"검"})
+        print(player.Name .. " 리조인: 기본 상태로 설정됨.")
     end
 end)
