@@ -1,155 +1,247 @@
-local InsertService = game:GetService("InsertService")
-local ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'))()
-local PrefabsId = "rbxassetid://" .. ReGui.PrefabsId
+-- Services
+local Players           = game:GetService("Players")
+local Workspace         = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService        = game:GetService("RunService")
+local UIS               = game:GetService("UserInputService")
+local InsertService     = game:GetService("InsertService")
 
---// Declare the Prefabs asset
+-- Player refs
+local player            = Players.LocalPlayer
+local character         = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart  = character:WaitForChild("HumanoidRootPart")
+
+-- Load Dear ReGui
+local ReGui = loadstring(game:HttpGet(
+    'https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'
+))()
+local PrefabsId = "rbxassetid://" .. ReGui.PrefabsId
 ReGui:Init({
     Prefabs = InsertService:LoadLocalAsset(PrefabsId)
 })
 
-local Window = ReGui:TabsWindow({
-    Title = "AutoSystem",
-    Size = UDim2.fromOffset(300, 400)
-})
+-- Global state
+_G.AutoDodge      = false
+_G.AutoQTE        = false
+_G.AutoThorian    = false
+_G.SelectedWeapon = "Sword"
 
---// Create tabs
-local Names = {"메인"}
+local autoDodgeTask, autoQteTask, autoThorianTask
+local selectedNPC
+local npcButtons = {}
 
-for _, Name in next, Names do
-    --// Create tab
-    local Tab = Window:CreateTab({Name = Name})
-    
-    --// 메인 탭 내용
-    Tab:Label({
-        Text = "이곳엔 메인 기능들이 있습니다다!"
-    })
-    
-    -- 자동회피 버튼
-    local dodgeButton = Tab:Button({
-        Text = "자동회피: OFF",
-        Font = Enum.Font.SourceSansBold,
-        TextSize = 18,
-        BackgroundColor = Color3.fromRGB(70, 130, 180),
-        TextColor = Color3.new(1, 1, 1)
-    })
-    dodgeButton.MouseButton1Click:Connect(function()
-        _G.AutoDodge = not _G.AutoDodge
-        dodgeButton.Text = "자동회피: " .. (_G.AutoDodge and "ON" or "OFF")
-        if _G.AutoDodge and not autoDodgeTask then
-            autoDodgeTask = task.spawn(startAutoDodge)
-        elseif not _G.AutoDodge then
-            autoDodgeTask = nil
-        end
-    end)
-    
-    -- 무기 QTE 버튼
-    local qteButton = Tab:Button({
-        Text = "무기 QTE: OFF",
-        Font = Enum.Font.SourceSansBold,
-        TextSize = 18,
-        BackgroundColor = Color3.fromRGB(180, 100, 70),
-        TextColor = Color3.new(1, 1, 1)
-    })
-    qteButton.MouseButton1Click:Connect(function()
-        _G.AutoQTE = not _G.AutoQTE
-        qteButton.Text = "무기 QTE: " .. (_G.AutoQTE and "ON" or "OFF")
-        if _G.AutoQTE and not autoQteTask then
-            autoQteTask = task.spawn(startAutoQTE)
-        elseif not _G.AutoQTE then
-            autoQteTask = nil
-        end
-    end)
-    
-    -- 토리안 QTE 버튼
-    local thorianButton = Tab:Button({
-        Text = "토리안 QTE: OFF",
-        Font = Enum.Font.SourceSansBold,
-        TextSize = 18,
-        BackgroundColor = Color3.fromRGB(140, 70, 180),
-        TextColor = Color3.new(1, 1, 1)
-    })
-    thorianButton.MouseButton1Click:Connect(function()
-        _G.AutoThorian = not _G.AutoThorian
-        thorianButton.Text = "토리안 QTE: " .. (_G.AutoThorian and "ON" or "OFF")
-        if _G.AutoThorian and not autoThorianTask then
-            autoThorianTask = task.spawn(startAutoThorianQTE)
-        elseif not _G.AutoThorian then
-            autoThorianTask = nil
-        end
-    end)
-    
-    -- 무기 선택 버튼들
-    local weapons = {"Sword", "Spear", "Magic", "Dagger", "Fist"}
-    for i, weapon in ipairs(weapons) do
-        local button = Tab:Button({
-            Text = weapon,
-            Font = Enum.Font.SourceSans,
-            TextSize = 14,
-            BackgroundColor = Color3.fromRGB(100, 100, 100),
-            TextColor = Color3.new(1, 1, 1)
-        })
-        button.MouseButton1Click:Connect(function()
-            _G.SelectedWeapon = weapon
-            print("선택된 무기:", weapon)
-        end)
-    end
-end
+--=== CORE LOOPS & FUNCTIONS ===--
 
--- 자동회피 루프
 local function startAutoDodge()
     while _G.AutoDodge do
         pcall(function()
             local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-            if remotes then
-                local info = remotes:FindFirstChild("Information")
-                local rf = info and info:FindFirstChild("RemoteFunction")
-                if rf then
-                    rf:FireServer({true, true}, "DodgeMinigame")
-                end
+            local info    = remotes and remotes:FindFirstChild("Information")
+            local rf      = info    and info:FindFirstChild("RemoteFunction")
+            if rf then
+                rf:FireServer({true, true}, "DodgeMinigame")
             end
         end)
-        wait(0.2)
+        task.wait(0.2)
     end
 end
 
--- 무기 QTE 루프
 local function startAutoQTE()
     while _G.AutoQTE do
         pcall(function()
             local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-            if remotes then
-                local info = remotes:FindFirstChild("Information")
-                local rf = info and info:FindFirstChild("RemoteFunction")
-                if rf then
-                    local qteName = _G.SelectedWeapon .. "QTE"
-                    rf:FireServer(true, qteName)
-                end
+            local info    = remotes and remotes:FindFirstChild("Information")
+            local rf      = info    and info:FindFirstChild("RemoteFunction")
+            if rf then
+                local name = _G.SelectedWeapon .. "QTE"
+                rf:FireServer(true, name)
             end
         end)
-        wait(0.4)
+        task.wait(0.4)
     end
 end
 
--- 토리안 QTE 루프
 local function startAutoThorianQTE()
     while _G.AutoThorian do
         pcall(function()
             local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-            if remotes then
-                local info = remotes:FindFirstChild("Information")
-                local rf = info and info:FindFirstChild("RemoteFunction")
-                if rf then
-                    rf:FireServer(true, "ThorianQTE")
-                end
+            local info    = remotes and remotes:FindFirstChild("Information")
+            local rf      = info    and info:FindFirstChild("RemoteFunction")
+            if rf then
+                rf:FireServer(true, "ThorianQTE")
             end
         end)
-        wait(0.4)
+        task.wait(0.4)
     end
 end
 
--- K키로 GUI 숨기기/보이기
-UIS.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.K then
-        Window.Visible = not Window.Visible
+local function fastTeleportTo(target)
+    if not (target and target:FindFirstChild("HumanoidRootPart")) then return end
+
+    -- collision off
+    for _, p in ipairs(character:GetDescendants()) do
+        if p:IsA("BasePart") then p.CanCollide = false end
+    end
+
+    local speed     = 200
+    local startPos  = humanoidRootPart.Position
+    local endPos    = target.HumanoidRootPart.Position
+    local dir       = (endPos - startPos).Unit
+    local dist      = (endPos - startPos).Magnitude
+    local duration  = dist / speed
+    local t0        = tick()
+
+    local conn
+    conn = RunService.Heartbeat:Connect(function(dt)
+        local elapsed = tick() - t0
+        if elapsed >= duration then
+            humanoidRootPart.CFrame = CFrame.new(endPos)
+            conn:Disconnect()
+        else
+            humanoidRootPart.CFrame = humanoidRootPart.CFrame + dir * speed * dt
+        end
+    end)
+end
+
+--=== BUILD REGUI WINDOW ===--
+
+local Window = ReGui:TabsWindow({
+    Title = "AutoSystem & Teleport",
+    Size  = UDim2.fromOffset(360, 520),
+})
+
+--––––– Tab 1: 메인 –––––--
+local mainTab = Window:CreateTab({Name = "메인"})
+mainTab:Label({Text = "이곳엔 메인 기능들이 있습니다다!"})
+
+-- 자동회피 토글
+mainTab:Button({
+    Text     = "자동회피: OFF",
+    TextSize = 18,
+    Callback = function(self)
+        _G.AutoDodge = not _G.AutoDodge
+        self:SetText("자동회피: " .. (_G.AutoDodge and "ON" or "OFF"))
+        if _G.AutoDodge then
+            autoDodgeTask = task.spawn(startAutoDodge)
+        else
+            autoDodgeTask = nil
+        end
+    end,
+})
+
+-- 무기 QTE 토글
+mainTab:Button({
+    Text     = "무기 QTE: OFF",
+    TextSize = 18,
+    Callback = function(self)
+        _G.AutoQTE = not _G.AutoQTE
+        self:SetText("무기 QTE: " .. (_G.AutoQTE and "ON" or "OFF"))
+        if _G.AutoQTE then
+            autoQteTask = task.spawn(startAutoQTE)
+        else
+            autoQteTask = nil
+        end
+    end,
+})
+
+-- 토리안 QTE 토글
+mainTab:Button({
+    Text     = "토리안 QTE: OFF",
+    TextSize = 18,
+    Callback = function(self)
+        _G.AutoThorian = not _G.AutoThorian
+        self:SetText("토리안 QTE: " .. (_G.AutoThorian and "ON" or "OFF"))
+        if _G.AutoThorian then
+            autoThorianTask = task.spawn(startAutoThorianQTE)
+        else
+            autoThorianTask = nil
+        end
+    end,
+})
+
+-- 무기 선택
+mainTab:Label({Text = "무기 선택:"})
+local weapons = {"Sword","Spear","Magic","Dagger","Fist"}
+for _, w in ipairs(weapons) do
+    mainTab:Button({
+        Text     = w,
+        TextSize = 14,
+        Callback = function()
+            _G.SelectedWeapon = w
+            warn("Selected weapon:", w)
+        end,
+    })
+end
+
+--––––– Tab 2: NPC 이동 –––––--
+local npcTab = Window:CreateTab({Name = "NPC 이동"})
+npcTab:Label({Text = "🧭 NPC 빠른이동"})
+
+-- NPC 다시 불러오기
+local reloadBtn = npcTab:Button({Text = "🔄 NPC 다시 불러오기"})
+
+-- 스크롤 캔버스
+local scrollCanvas = npcTab:ScrollingCanvas({
+    Fill      = true,
+    UiPadding = UDim.new(0,4),
+})
+
+-- 이동 버튼
+local tpBtn = npcTab:Button({
+    Text     = "🚀 선택한 NPC로 이동",
+    TextSize = 16,
+})
+
+-- NPC 로드 함수
+local function loadNPCs()
+    selectedNPC = nil
+    -- clear
+    for _, c in ipairs(scrollCanvas.Frame:GetChildren()) do
+        if c:IsA("GuiObject") then c:Destroy() end
+    end
+
+    -- scan
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model")
+        and obj:FindFirstChild("Humanoid")
+        and obj:FindFirstChild("HumanoidRootPart") then
+
+            local btn = scrollCanvas:Button({
+                Text     = obj.Name,
+                TextSize = 14,
+            })
+            btn.MouseButton1Click:Connect(function()
+                selectedNPC = obj
+                -- highlight
+                for _, sib in ipairs(scrollCanvas.Frame:GetChildren()) do
+                    if sib:IsA("TextButton") then
+                        sib.BackgroundColor3 = Color3.fromRGB(90,90,90)
+                    end
+                end
+                btn.BackgroundColor3 = Color3.fromRGB(0,170,255)
+            end)
+        end
+    end
+end
+
+reloadBtn.MouseButton1Click:Connect(loadNPCs)
+tpBtn.MouseButton1Click:Connect(function()
+    if selectedNPC then
+        fastTeleportTo(selectedNPC)
+    else
+        tpBtn:SetText("❗ NPC 선택하세요")
+        task.delay(1, function()
+            tpBtn:SetText("🚀 선택한 NPC로 이동")
+        end)
+    end
+end)
+
+-- 최초 로드
+loadNPCs()
+
+-- K 키로 토글
+UIS.InputBegan:Connect(function(i, proc)
+    if not proc and i.KeyCode == Enum.KeyCode.K then
+        Window:ToggleVisibility()
     end
 end)
