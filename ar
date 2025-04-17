@@ -1,5 +1,4 @@
 local RunService = game:GetService("RunService")
-
 local ReGui = require(game.ReplicatedStorage.ReGui)
 ReGui:Init()
 ReGui:DefineTheme("Cherry", {
@@ -7,303 +6,157 @@ ReGui:DefineTheme("Cherry", {
 	TextDisabled = Color3.fromRGB(120, 100, 120),
 	Text = Color3.fromRGB(200, 180, 200),
 	
-	FrameBg = Color3.fromRGB(25, 20, 25),
+	FrameBg = Color3.fromRGB(40, 40, 40),
 	FrameBgTransparency = 0.4,
-	FrameBgActive = Color3.fromRGB(120, 100, 120),
+	FrameBgActive = Color3.fromRGB(70, 130, 180),
 	FrameBgTransparencyActive = 0.4,
 	
-	CheckMark = Color3.fromRGB(150, 100, 150),
-	SliderGrab = Color3.fromRGB(150, 100, 150),
-	ButtonsBg = Color3.fromRGB(150, 100, 150),
-	CollapsingHeaderBg = Color3.fromRGB(150, 100, 150),
-	CollapsingHeaderText = Color3.fromRGB(200, 180, 200),
-	RadioButtonHoveredBg = Color3.fromRGB(150, 100, 150),
+	ButtonsBg = Color3.fromRGB(100, 100, 100),
+	CollapsingHeaderBg = Color3.fromRGB(100, 100, 100),
+	CollapsingHeaderText = Color3.fromRGB(255, 255, 255),
 	
-	WindowBg = Color3.fromRGB(35, 30, 35),
-	TitleBarBg = Color3.fromRGB(35, 30, 35),
-	TitleBarBgActive = Color3.fromRGB(50, 45, 50),
+	WindowBg = Color3.fromRGB(40, 40, 40),
+	TitleBarBg = Color3.fromRGB(50, 50, 50),
+	TitleBarBgActive = Color3.fromRGB(60, 60, 60),
 	
 	Border = Color3.fromRGB(50, 45, 50),
-	ResizeGrab = Color3.fromRGB(50, 45, 50),
-	RegionBgTransparency = 1,
 })
 
---// Tabs
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- GUI 생성
 local Window = ReGui:Window({
-	Title = "Cherry",
+	Title = "Auto System",
 	Theme = "Cherry",
 	NoClose = true,
-	Size = UDim2.new(0, 600, 0, 400),
+	Size = UDim2.new(0, 250, 0, 400),
 }):Center()
 
-local ModalWindow = Window:PopupModal({
-	Title = "Modal Example",
-	AutoSize = "Y"
+local Group = Window:List({
+	UiPadding = 5,
+	HorizontalFlex = Enum.UIFlexAlignment.Fill,
 })
 
-ModalWindow:Label({
-	Text = [[Hello, this is a modal. 
-Thank you for using Depso's ReGui 😁]],
-	TextWrapped = true
-})
-ModalWindow:Separator()
-
-ModalWindow:Button({
-	Text = "Okay",
+-- 자동회피 버튼
+local dodgeButton = Group:Button({
+	Text = "자동회피: OFF",
 	Callback = function()
-		ModalWindow:ClosePopup()
+		_G.AutoDodge = not _G.AutoDodge
+		dodgeButton.Text = "자동회피: " .. (_G.AutoDodge and "ON" or "OFF")
+		if _G.AutoDodge then
+			if not autoDodgeTask then
+				autoDodgeTask = task.spawn(startAutoDodge)
+			end
+		else
+			autoDodgeTask = nil
+		end
 	end,
 })
 
-local Group = Window:List({
-	UiPadding = 2,
-	HorizontalFlex = Enum.UIFlexAlignment.Fill,
+-- 무기 QTE 버튼
+local qteButton = Group:Button({
+	Text = "무기 QTE: OFF",
+	Callback = function()
+		_G.AutoQTE = not _G.AutoQTE
+		qteButton.Text = "무기 QTE: " .. (_G.AutoQTE and "ON" or "OFF")
+		if _G.AutoQTE then
+			if not autoQteTask then
+				autoQteTask = task.spawn(startAutoQTE)
+			end
+		else
+			autoQteTask = nil
+		end
+	end,
 })
 
-local TabsBar = Group:List({
-	Border = true,
-	UiPadding = 5,
-	BorderColor = Window:GetThemeKey("Border"),
-	BorderThickness = 1,
-	HorizontalFlex = Enum.UIFlexAlignment.Fill,
-	HorizontalAlignment = Enum.HorizontalAlignment.Center,
-	AutomaticSize = Enum.AutomaticSize.None,
-	FlexMode = Enum.UIFlexMode.None,
-	Size = UDim2.new(0, 40, 1, 0),
-	CornerRadius = UDim.new(0, 5)
+-- 토리안 QTE 버튼
+local thorianButton = Group:Button({
+	Text = "토리안 QTE: OFF",
+	Callback = function()
+		_G.AutoThorian = not _G.AutoThorian
+		thorianButton.Text = "토리안 QTE: " .. (_G.AutoThorian and "ON" or "OFF")
+		if _G.AutoThorian then
+			if not autoThorianTask then
+				autoThorianTask = task.spawn(startAutoThorianQTE)
+			end
+		else
+			autoThorianTask = nil
+		end
+	end,
 })
-local TabSelector = Group:TabSelector({
-	NoTabsBar = true,
-	Size = UDim2.fromScale(0.5, 1)
-})
 
-local function CreateTab(Name: string, Icon)
-	local Tab = TabSelector:CreateTab({
-		Name = Name
-	})
-
-	local List = Tab:List({
-		HorizontalFlex = Enum.UIFlexAlignment.Fill,
-		UiPadding = 1,
-		Spacing = 10
-	})
-
-	local Button = TabsBar:Image({
-		Image = Icon,
-		Ratio = 1,
-		RatioAxis = Enum.DominantAxis.Width,
-		Size = UDim2.fromScale(1, 1),
-		Callback = function(self)
-			TabSelector:SetActiveTab(Tab)
+-- 무기 선택 버튼 생성
+local weapons = {"Sword", "Spear", "Magic", "Dagger", "Fist"}
+for i, weapon in ipairs(weapons) do
+	local button = Group:Button({
+		Text = weapon,
+		Callback = function()
+			_G.SelectedWeapon = weapon
+			print("선택된 무기:", weapon)
 		end,
 	})
-
-	ReGui:SetItemTooltip(Button, function(Canvas)
-		Canvas:Label({
-			Text = Name
-		})
-	end)
-
-	return List
 end
 
-local function CreateRegion(Parent, Title)
-	local Region = Parent:Region({
-		Border = true,
-		BorderColor = Window:GetThemeKey("Border"),
-		BorderThickness = 1,
-		CornerRadius = UDim.new(0, 5)
-	})
-
-	Region:Label({
-		Text = Title
-	})
-
-	return Region
+-- 자동회피 루프
+local function startAutoDodge()
+	while _G.AutoDodge do
+		pcall(function()
+			local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+			if remotes then
+				local info = remotes:FindFirstChild("Information")
+				local rf = info and info:FindFirstChild("RemoteFunction")
+				if rf then
+					rf:FireServer({true, true}, "DodgeMinigame")
+				end
+			end
+		end)
+		wait(0.2)
+	end
 end
 
-local General = CreateTab("General", 139650104834071)
-local Settings = CreateTab("Settings", ReGui.Icons.Settings)
-
---// General Tab
-local AimbotSection = CreateRegion(General, "Aimbot") 
-local ESPSection = CreateRegion(General, "ESP") 
-
-AimbotSection:Checkbox({
-	Label = "Enabled",
-	Value = false,
-	Callback = function(self, Value)
-		--Aimbot_Settings.Enabled = Value
+-- 무기 QTE 루프
+local function startAutoQTE()
+	while _G.AutoQTE do
+		pcall(function()
+			local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+			if remotes then
+				local info = remotes:FindFirstChild("Information")
+				local rf = info and info:FindFirstChild("RemoteFunction")
+				if rf then
+					local qteName = _G.SelectedWeapon .. "QTE"
+					rf:FireServer(true, qteName)
+				end
+			end
+		end)
+		wait(0.4)
 	end
-})
+end
 
-AimbotSection:Combo({
-	Label = "Update Mode",
-	Items = {"RenderStepped", "Stepped", "Heartbeat"},
-	Selected = 1,
-	Callback = function(self, Value)
-		--Aimbot_DeveloperSettings.UpdateMode = Value
+-- 토리안 QTE 루프
+local function startAutoThorianQTE()
+	while _G.AutoThorian do
+		pcall(function()
+			local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+			if remotes then
+				local info = remotes:FindFirstChild("Information")
+				local rf = info and info:FindFirstChild("RemoteFunction")
+				if rf then
+					rf:FireServer(true, "ThorianQTE")
+				end
+			end
+		end)
+		wait(0.4)
 	end
-})
+end
 
-AimbotSection:Combo({
-	Label = "Team Check Option",
-	Items = {"TeamColor", "Team"},
-	Selected = 1,
-	Callback = function(self, Value)
-		--Aimbot_DeveloperSettings.TeamCheckOption = Value
+-- K키로 GUI 숨기기/보이기
+UIS.InputBegan:Connect(function(input, processed)
+	if not processed and input.KeyCode == Enum.KeyCode.K then
+		Window:SetVisible(not Window.Visible)
 	end
-})
-
-AimbotSection:SliderInt({
-	Label = "Rainbow Speed",
-	Default = 1.5 * 10,
-	Minimum = 5,
-	Maximum = 30,
-	Callback = function(self, Value)
-		--Aimbot_DeveloperSettings.RainbowSpeed = Value / 10
-	end
-})
-
-AimbotSection:Button({
-	Text = "Refresh",
-	Callback = function(self)
-		--Aimbot.Restart()
-	end
-})
-
-AimbotSection:Separator({
-	Text = "Properties"	
-})
-
-AimbotSection:Combo({
-	Label = "Lock Mode",
-	Items = {"CFrame", "mousemoverel"},
-	Selected = 1,
-	Callback = function(self, Value)
-
-	end
-})
-
-AimbotSection:Combo({
-	Label = "Lock Part",
-	Items = {"Head", "Torso", "Random"},
-	Selected = 1,
-	Callback = function(self, Value)
-
-	end
-})
-
-AimbotSection:Keybind({
-	Label = "Trigger Key",
-	Value = Enum.KeyCode.MouseRightButton,
-	IgnoreGameProcessed = true,
-	Callback = function(self, KeyCode)
-
-	end,
-})
-
-AimbotSection:SliderInt({
-	Label = "Field Of View",
-	Value = 100,
-	Minimum = 0,
-	Maximum = 720,
-	Callback = function(self, Value)
-
-	end
-})
-
-AimbotSection:SliderInt({
-	Label = "Transparency",
-	Value = 1,
-	Minimum = 1,
-	Maximum = 10,
-	Callback = function(self, Value)
-
-	end
-})
-
-AimbotSection:SliderInt({
-	Label = "Thickness",
-	Minimum = 1,
-	Maximum = 5,
-	Callback = function(self, Value)
-
-	end
-})
-
-ESPSection:Combo({
-	Label = "Update Mode",
-	Items = {"RenderStepped", "Stepped", "Heartbeat"},
-	Selected = 1,
-	Callback = function(self, Value)
-		--ESP_DeveloperSettings.UpdateMode = Value
-	end
-})
-
-ESPSection:Combo({
-	Label = "Team Check Option",
-	Items = {"TeamColor", "Team"},
-	Selected = 1,
-	Callback = function(self, Value)
-		--ESP_DeveloperSettings.TeamCheckOption = Value
-	end
-})
-
-ESPSection:SliderInt({
-	Label = "Rainbow Speed",
-	Value = 1 * 10,
-	Minimum = 5,
-	Maximum = 30,
-	Callback = function(self, Value)
-		--ESP_DeveloperSettings.RainbowSpeed = Value / 10
-	end
-})
-
-ESPSection:SliderInt({
-	Label = "Width Boundary",
-	Value = 1.5 * 10,
-	Minimum = 5,
-	Maximum = 30,
-	Callback = function(self, Value)
-		--ESP_DeveloperSettings.WidthBoundary = Value / 10
-	end
-})
-
-ESPSection:Button({
-	Text = "Refresh",
-	Callback = function(self)
-		--ESP:Restart()
-	end
-})
-
---// Settings
-local OptionsSection = CreateRegion(Settings, "Options") 
-local ConfigSection = CreateRegion(Settings, "Configurations") 
-
-OptionsSection:Keybind({
-	Label = "Show / Hide GUI",
-	Value = Enum.KeyCode.RightShift,
-	Callback = function(_, NewKeybind)
-		local IsVisible = Window.Visible
-		Window:SetVisible(not IsVisible)
-	end
-})
-
-OptionsSection:Button({
-	Text = "Unload Script",
-	Callback = function()
-		Window:Close()
-	end
-})
-
---// Configurations
-ConfigSection:Combo({
-	Label = "Config",
-	Items = {
-		"Legit",
-		"Rage",
-		"Blatant"
-	},
-	Selected = 1,
-})
+end)
