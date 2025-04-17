@@ -46,7 +46,7 @@ end)
 -- Rejoin 버튼 기능
 createButton("RejoinButton", UDim2.new(0, 100, 0, 160), "Rejoin", function()
     if rollbackData then
-        -- 인벤토리 복원
+        -- 저장된 상태로 복원
         for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
             item:Destroy()
         end
@@ -63,6 +63,7 @@ createButton("RejoinButton", UDim2.new(0, 100, 0, 160), "Rejoin", function()
         -- 서버 재접속
         TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
 
+        -- 아이템 복원 확인
         print("Rollback complete and rejoined to server.")
     else
         print("No rollback point set.")
