@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
 -- 롤백 데이터 저장 변수
 local rollbackData = nil
@@ -27,21 +28,42 @@ local function createButton(name, position, text, callback)
     button.MouseButton1Click:Connect(callback)
 end
 
--- 롤백 버튼 기능
+-- Rollback 버튼 기능
 createButton("RollbackButton", UDim2.new(0, 100, 0, 100), "Rollback", function()
-    -- 현재 인벤토리 상태 저장
-    rollbackData = {}
+    rollbackData = {
+        inventory = {},
+        position = Character.HumanoidRootPart.Position,
+        health = Character.Humanoid.Health
+    }
+
+    -- 인벤토리 상태 저장
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-        table.insert(rollbackData, item.Name)
+        table.insert(rollbackData.inventory, item.Name)
     end
     print("Rollback point saved.")
 end)
 
--- 리조인 버튼 기능
+-- Rejoin 버튼 기능
 createButton("RejoinButton", UDim2.new(0, 100, 0, 160), "Rejoin", function()
     if rollbackData then
-        -- 동일한 서버로 재접속
+        -- 인벤토리 복원
+        for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+            item:Destroy()
+        end
+        for _, itemName in ipairs(rollbackData.inventory) do
+            local newTool = Instance.new("Tool")
+            newTool.Name = itemName
+            newTool.Parent = LocalPlayer.Backpack
+        end
+
+        -- 위치 및 체력 복원
+        Character:SetPrimaryPartCFrame(CFrame.new(rollbackData.position))
+        Character.Humanoid.Health = rollbackData.health
+
+        -- 서버 재접속
         TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+
+        print("Rollback complete and rejoined to server.")
     else
         print("No rollback point set.")
     end
