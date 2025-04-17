@@ -1,176 +1,139 @@
-local Decimals = 4
-local Clock = os.clock()
-local ValueText = "Value Is Now :"
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
+local InsertService = game:GetService("InsertService")
 
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/drillygzzly/Roblox-UI-Libs/main/1%20Tokyo%20Lib%20(FIXED)/Tokyo%20Lib%20Source.lua"))({
-    cheatname = "Title Here", -- watermark text
-    gamename = "Title Here", -- watermark text
+local player = Players.LocalPlayer
+
+-- ReGui 불러오기 및 초기화
+local ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'))()
+local PrefabsId = "rbxassetid://" .. ReGui.PrefabsId
+
+ReGui:Init({
+	Prefabs = InsertService:LoadLocalAsset(PrefabsId)
 })
 
-library:init()
-
-local Window1  = library.NewWindow({
-    title = "Title Here | Title Here", -- Mainwindow Text
-    size = UDim2.new(0, 510, 0.6, 6
-)})
-
-local Tab1 = Window1:AddTab("  Tab1  ")
-local SettingsTab = library:CreateSettingsTab(Window1)
-
---Tab1:SetText("Text")
-
-local Section1 = Tab1:AddSection("Section 1", 1)
---Section1:SetText("Text")
-
-Section1:AddToggle({
-    text = "Toggle1",
-    state = false,
-    risky = true,
-    tooltip = "tooltip1",
-    flag = "Toggle_1",
-    risky = false,
-    callback = function(v)
-        print(ValueText, v)
-    end
-}):AddBind({
-    enabled = true,
-    text = "Keybind1",
-    tooltip = "tooltip1",
-    mode = "toggle",
-    bind = "None",
-    flag = "ToggleKey_1",
-    state = false,
-    nomouse = false,
-    risky = false,
-    noindicator = false,
-    callback = function(v)
-        print(ValueText, v)
-    end,
-    keycallback = function(v)
-        print(ValueText, v)
-    end
+-- 커스텀 엘리먼트 정의 예시 (DefineElement)
+ReGui:DefineElement("PurpleText", {
+	Base = {
+		IsBigText = true,
+		Text = "기본 텍스트",
+	},
+	Create = function(self, Config)
+		local Label = Instance.new("TextLabel")
+		Label.TextSize = Config.IsBigText and 24 or 14
+		Label.TextColor3 = Color3.fromRGB(180, 100, 255)
+		Label.Text = Config.Text
+		Label.BackgroundTransparency = 1
+		Label.Size = UDim2.new(1, 0, 0, 30)
+		return Label
+	end,
 })
 
-Section1:AddBox({
-    enabled = true,
-    name = "TextBox1",
-    flag = "TextBox_1",
-    input = "PlaceHolder1",
-    focused = false,
-    risky = false,
-    callback = function(v)
-        print(ValueText, v)
-    end
+-- 글로벌 플래그 정의 예시 (DefineGlobalFlag)
+ReGui:DefineGlobalFlag({
+	Properties = {"Hidden"},
+	Callback = function(Data, Object, Value)
+		Object.Visible = not Value
+	end
 })
 
---[[Section1:AddToggle({
-    text = "Toggle1",
-    flag = "Toggle_1",
-    callback = function(v)
-        print(ValueText, v)
-    end
-}):AddColor({
-    text = "Color1",
-    color = Color3.fromRGB(255, 255, 255),
-    flag = "Color_1",
-    callback = function(v)
-        print(ValueText, v)
-    end
-})--]]
+-- 상태 변수
+_G.AutoDodge = false
+_G.AutoQTE = false
+_G.AutoThorian = false
+_G.SelectedWeapon = "Sword"
 
---[[Section1:AddBind({
-    enabled = true,
-    text = "Keybind1",
-    tooltip = "tooltip1",
-    mode = "toggle",
-    bind = "None",
-    flag = "ToggleKey_1",
-    state = false,
-    nomouse = false,
-    risky = false,
-    noindicator = false,
-    callback = function(v)
-        print(ValueText, v)
-    end,
-    keycallback = function(v)
-        print(ValueText, v)
-    end
-})--]]
-
-Section1:AddSeparator({
-    enabled = true,
-    text = "Separator1"
+-- ReGui 윈도우 생성
+local Window = ReGui:TabsWindow({
+	Title = "자동 시스템 UI",
+	Size = UDim2.fromOffset(320, 280),
 })
 
-Section1:AddButton({
-    enabled = true,
-    text = "Button1",
-    tooltip = "tooltip1",
-    confirm = true,
-    risky = false,
-    callback = function()
-        print("Pressed!")
-    end
-})
+-- 기능 탭 생성
+local 기능탭 = Window:CreateTab({ Name = "기능" })
 
--- Button1:SetText("Text")
+-- 기능 버튼 생성 함수
+local function CreateToggle(tab, name, stateVar, startFunc)
+	tab:Button({
+		Text = name .. ": OFF",
+		Callback = function(Button)
+			_G[stateVar] = not _G[stateVar]
+			Button:SetText(name .. ": " .. (_G[stateVar] and "ON" or "OFF"))
+			if _G[stateVar] then
+				task.spawn(startFunc)
+			end
+		end,
+	})
+end
 
-Section1:AddSlider({
-    enabled = true,
-    text = "Slider1",
-    tooltip = "tooltip1",
-    flag = "Slider_1",
-    suffix = "",
-    dragging = true,
-    focused = false,
-    min = 0,
-    max = 100,
-    increment = 0.1,
-    risky = false,
-    callback = function(v)
-        print(ValueText, v)
-    end
-})
+-- 자동 루프 함수들
+local function startAutoDodge()
+	while _G.AutoDodge do
+		pcall(function()
+			local rf = ReplicatedStorage:FindFirstChild("Remotes")
+				and ReplicatedStorage.Remotes:FindFirstChild("Information")
+				and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
+			if rf then
+				rf:FireServer({true, true}, "DodgeMinigame")
+			end
+		end)
+		wait(0.2)
+	end
+end
 
---Slider_1:SetValue(100)
+local function startAutoQTE()
+	while _G.AutoQTE do
+		pcall(function()
+			local rf = ReplicatedStorage:FindFirstChild("Remotes")
+				and ReplicatedStorage.Remotes:FindFirstChild("Information")
+				and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
+			if rf then
+				rf:FireServer(true, _G.SelectedWeapon .. "QTE")
+			end
+		end)
+		wait(0.4)
+	end
+end
 
-Section1:AddList({
-    enabled = true,
-    text = "Selection", 
-    tooltip = "tooltip1",
-    selected = "",
-    multi = false,
-    open = false,
-    max = 4,
-    values = {"1", "2", "3"},
-    risky = false,
-    callback = function(v)
-        print(ValueText, v)
-    end
-})
+local function startAutoThorianQTE()
+	while _G.AutoThorian do
+		pcall(function()
+			local rf = ReplicatedStorage:FindFirstChild("Remotes")
+				and ReplicatedStorage.Remotes:FindFirstChild("Information")
+				and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
+			if rf then
+				rf:FireServer(true, "ThorianQTE")
+			end
+		end)
+		wait(0.4)
+	end
+end
 
-Section1:AddColor({
-    enabled = true,
-    text = "Color1",
-    tooltip = "tooltip1",
-    color = Color3.fromRGB(255, 255, 255),
-    flag = "Color_1",
-    trans = 0,
-    open = false,
-    risky = false,
-    callback = function(v)
-        print(ValueText, v)
-    end
-})
+-- 기능 버튼 추가
+CreateToggle(기능탭, "자동회피", "AutoDodge", startAutoDodge)
+CreateToggle(기능탭, "무기 QTE", "AutoQTE", startAutoQTE)
+CreateToggle(기능탭, "토리안 QTE", "AutoThorian", startAutoThorianQTE)
 
-local Time = (string.format("%."..tostring(Decimals).."f", os.clock() - Clock))
-library:SendNotification(("Loaded In "..tostring(Time)), 6)
+-- 무기 선택 탭 생성
+local 무기탭 = Window:CreateTab({ Name = "무기 선택" })
+local weapons = {"Sword", "Spear", "Magic", "Dagger", "Fist"}
 
---[[
-    --Window1:SetOpen(false)
-    makefolder("Title Here")
-    library:SetTheme(Default)
-    library:GetConfig(Default)
-    library:LoadConfig(Default)
-    library:SaveConfig(Default)
-]]
+무기탭:Label({ Text = "무기를 선택하세요." })
+
+for _, weapon in ipairs(weapons) do
+	무기탭:Button({
+		Text = weapon,
+		Callback = function()
+			_G.SelectedWeapon = weapon
+			print("선택된 무기:", weapon)
+		end
+	})
+end
+
+-- K 키로 UI 숨기기/보이기 (글로벌 플래그 이용)
+UIS.InputBegan:Connect(function(input, processed)
+	if not processed and input.KeyCode == Enum.KeyCode.K then
+		Window:SetFlag("Hidden", not Window:GetFlag("Hidden"))
+	end
+end)
