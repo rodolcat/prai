@@ -2,70 +2,69 @@ local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 
--- 기존 UI 제거
+-- 이전 GUI 제거
 if CoreGui:FindFirstChild("RollbackUI") then
     CoreGui.RollbackUI:Destroy()
 end
 
--- UI 생성
+-- GUI 생성
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "RollbackUI"
-screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.Parent = CoreGui -- 여기! CoreGui에 직접 넣음
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+screenGui.ResetOnSpawn = false
+pcall(function()
+    screenGui.Parent = CoreGui
+end)
 
--- 버튼 생성 함수
-local function createButton(name, text, position, color)
-	local btn = Instance.new("TextButton")
-	btn.Name = name
-	btn.Size = UDim2.new(0, 160, 0, 50)
-	btn.Position = position
-	btn.Text = text
-	btn.BackgroundColor3 = color
-	btn.TextColor3 = Color3.new(1, 1, 1)
-	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 20
-	btn.Parent = screenGui
-	return btn
+-- 버튼 만들기
+local function createButton(name, text, posY, color)
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Size = UDim2.new(0, 200, 0, 60)
+    button.Position = UDim2.new(0, 100, 0, posY)
+    button.BackgroundColor3 = color
+    button.Text = text
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 24
+    button.Visible = true
+    button.ZIndex = 1000
+    button.Parent = screenGui
+    return button
 end
 
 -- 버튼 생성
-local rollbackBtn = createButton("RollbackButton", "Rollback", UDim2.new(0, 100, 0, 200), Color3.fromRGB(255, 100, 100))
-local rejoinBtn = createButton("RejoinButton", "Rejoin", UDim2.new(0, 100, 0, 270), Color3.fromRGB(100, 150, 255))
+local rollbackBtn = createButton("RollbackButton", "Rollback", 300, Color3.fromRGB(255, 80, 80))
+local rejoinBtn = createButton("RejoinButton", "Rejoin", 380, Color3.fromRGB(80, 120, 255))
 
--- 저장용 테이블
+-- 인벤토리 저장
 local savedInventory = {}
 
--- Rollback 버튼 기능
 rollbackBtn.MouseButton1Click:Connect(function()
-	savedInventory = {}
-	for _, tool in pairs(player.Backpack:GetChildren()) do
-		if tool:IsA("Tool") then
-			table.insert(savedInventory, tool.Name)
-		end
-	end
-	print("✅ 저장된 인벤토리:", table.concat(savedInventory, ", "))
+    savedInventory = {}
+    for _, tool in ipairs(player.Backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            table.insert(savedInventory, tool.Name)
+        end
+    end
+    print("✅ 저장됨:", table.concat(savedInventory, ", "))
 end)
 
--- Rejoin 버튼 기능
 rejoinBtn.MouseButton1Click:Connect(function()
-	if #savedInventory == 0 then
-		warn("❌ 저장된 아이템 없음")
-		return
-	end
-
-	for _, tool in pairs(player.Backpack:GetChildren()) do
-		if tool:IsA("Tool") then
-			tool:Destroy()
-		end
-	end
-
-	for _, itemName in ipairs(savedInventory) do
-		local tool = Instance.new("Tool")
-		tool.Name = itemName
-		tool.Parent = player.Backpack
-	end
-
-	print("♻️ 복원 완료:", table.concat(savedInventory, ", "))
+    if #savedInventory == 0 then
+        warn("❌ 저장된 아이템 없음")
+        return
+    end
+    for _, tool in ipairs(player.Backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            tool:Destroy()
+        end
+    end
+    for _, name in ipairs(savedInventory) do
+        local tool = Instance.new("Tool")
+        tool.Name = name
+        tool.Parent = player.Backpack
+    end
+    print("♻️ 복원 완료:", table.concat(savedInventory, ", "))
 end)
