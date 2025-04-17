@@ -1,7 +1,7 @@
 -- Initialize TokyoLib
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/drillygzzly/Roblox-UI-Libs/main/1%20Tokyo%20Lib%20(FIXED)/Tokyo%20Lib%20Source.lua"))({
     cheatname = "AutoSystem",
-    gamename = "10595058975"
+    gamename = "YourGame"
 })
 library:init()
 
