@@ -1,35 +1,15 @@
--- Services
-local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- 통합 GUI: 자동회피, 무기 QTE, 토리안 QTE, 무기 선택, NPC 텔레포트
 
--- Player & GUI
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
-
--- ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AutoSystemUI"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = playerGui
-
--- Main Frame
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 240, 0, 350)
-frame.Position = UDim2.new(0.6, -120, 0.5, -175)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-frame.Parent = screenGui
-
--- 제목 라벨
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 35)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.Text = "⚙️ 자동 시스템 패널"
-title.Font = Enum.Font.GothamBold
-title.TextSize = 18
-title.TextColor3 = Color3.new(1, 1, 1)
-title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
 -- 상태 변수
 _G.AutoDodge = false
@@ -37,148 +17,233 @@ _G.AutoQTE = false
 _G.AutoThorian = false
 _G.SelectedWeapon = "Sword"
 
--- 버튼 생성 함수
-local function createButton(text, yOffset, color)
-	local btn = Instance.new("TextButton", frame)
-	btn.Size = UDim2.new(1, -20, 0, 40)
-	btn.Position = UDim2.new(0, 10, 0, yOffset)
-	btn.Text = text
-	btn.Font = Enum.Font.GothamSemibold
-	btn.TextSize = 16
-	btn.TextColor3 = Color3.new(1, 1, 1)
-	btn.BackgroundColor3 = color
-	btn.AutoButtonColor = true
-	return btn
+local autoDodgeTask = nil
+local autoQteTask = nil
+local autoThorianTask = nil
+
+-- GUI 생성
+local gui = Instance.new("ScreenGui")
+gui.Name = "AutoSystemUI"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+-- 프레임
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 330, 0, 400)
+frame.Position = UDim2.new(0.7, -150, 0.5, -200)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+-- 탭 생성
+local tabButtons = {}
+local tabs = {}
+local tabNames = {"자동", "무기선택", "텔레포트"}
+
+local tabBar = Instance.new("Frame", frame)
+tabBar.Size = UDim2.new(1, 0, 0, 30)
+tabBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+
+for i, name in ipairs(tabNames) do
+    local tabBtn = Instance.new("TextButton", tabBar)
+    tabBtn.Size = UDim2.new(0, 100, 1, 0)
+    tabBtn.Position = UDim2.new(0, (i - 1) * 110, 0, 0)
+    tabBtn.Text = name
+    tabBtn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+    tabBtn.TextColor3 = Color3.new(1, 1, 1)
+    tabBtn.Font = Enum.Font.SourceSansBold
+    tabBtn.TextSize = 14
+    tabButtons[name] = tabBtn
 end
 
--- 기능 버튼
-local dodgeButton = createButton("자동회피: OFF", 45, Color3.fromRGB(70, 130, 180))
-local qteButton = createButton("무기 QTE: OFF", 95, Color3.fromRGB(180, 100, 70))
-local thorianButton = createButton("토리안 QTE: OFF", 145, Color3.fromRGB(140, 70, 180))
+-- 탭 컨테이너
+for _, name in ipairs(tabNames) do
+    local tab = Instance.new("Frame", frame)
+    tab.Size = UDim2.new(1, 0, 1, -30)
+    tab.Position = UDim2.new(0, 0, 0, 30)
+    tab.BackgroundTransparency = 1
+    tab.Visible = false
+    tabs[name] = tab
+end
 
--- 무기 버튼
+-- 탭 전환 함수
+local function switchTab(tabName)
+    for name, tab in pairs(tabs) do
+        tab.Visible = (name == tabName)
+    end
+end
+
+for name, btn in pairs(tabButtons) do
+    btn.MouseButton1Click:Connect(function()
+        switchTab(name)
+    end)
+end
+switchTab("자동")
+
+-- 자동 탭
+local autoTab = tabs["자동"]
+local function createAutoButton(text, posY, toggleVar, toggleFunc)
+    local btn = Instance.new("TextButton", autoTab)
+    btn.Size = UDim2.new(1, -20, 0, 40)
+    btn.Position = UDim2.new(0, 10, 0, posY)
+    btn.Text = text .. ": OFF"
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 18
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+    btn.MouseButton1Click:Connect(function()
+        _G[toggleVar] = not _G[toggleVar]
+        btn.Text = text .. ": " .. (_G[toggleVar] and "ON" or "OFF")
+        if _G[toggleVar] then
+            if not _G[toggleFunc] then
+                _G[toggleFunc] = task.spawn(_G["start" .. toggleFunc])
+            end
+        else
+            _G[toggleFunc] = nil
+        end
+    end)
+end
+
+createAutoButton("자동회피", 10, "AutoDodge", "autoDodgeTask")
+createAutoButton("무기 QTE", 60, "AutoQTE", "autoQteTask")
+createAutoButton("토리안 QTE", 110, "AutoThorian", "autoThorianTask")
+
+function _G.startautoDodgeTask()
+    while _G.AutoDodge do
+        pcall(function()
+            local rf = ReplicatedStorage:FindFirstChild("Remotes")
+                and ReplicatedStorage.Remotes:FindFirstChild("Information")
+                and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
+            if rf then rf:FireServer({true, true}, "DodgeMinigame") end
+        end)
+        task.wait(0.2)
+    end
+end
+
+function _G.startautoQteTask()
+    while _G.AutoQTE do
+        pcall(function()
+            local rf = ReplicatedStorage:FindFirstChild("Remotes")
+                and ReplicatedStorage.Remotes:FindFirstChild("Information")
+                and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
+            if rf then rf:FireServer(true, _G.SelectedWeapon .. "QTE") end
+        end)
+        task.wait(0.4)
+    end
+end
+
+function _G.startautoThorianTask()
+    while _G.AutoThorian do
+        pcall(function()
+            local rf = ReplicatedStorage:FindFirstChild("Remotes")
+                and ReplicatedStorage.Remotes:FindFirstChild("Information")
+                and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
+            if rf then rf:FireServer(true, "ThorianQTE") end
+        end)
+        task.wait(0.4)
+    end
+end
+
+-- 무기 선택 탭
+local weaponTab = tabs["무기선택"]
 local weapons = {"Sword", "Spear", "Magic", "Dagger", "Fist"}
+
 for i, weapon in ipairs(weapons) do
-	local btn = Instance.new("TextButton", frame)
-	btn.Size = UDim2.new(0.5, -15, 0, 30)
-	btn.Position = UDim2.new((i - 1) % 2 * 0.5, 10 + ((i - 1) % 2) * 5, 0, 200 + math.floor((i - 1) / 2) * 35)
-	btn.Text = weapon
-	btn.Font = Enum.Font.Gotham
-	btn.TextSize = 14
-	btn.TextColor3 = Color3.new(1, 1, 1)
-	btn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-	btn.MouseButton1Click:Connect(function()
-		_G.SelectedWeapon = weapon
-		print("선택된 무기:", weapon)
-	end)
+    local btn = Instance.new("TextButton", weaponTab)
+    btn.Size = UDim2.new(0, 130, 0, 30)
+    btn.Position = UDim2.new(0, 10 + ((i - 1) % 2) * 140, 0, 10 + math.floor((i - 1) / 2) * 40)
+    btn.Text = weapon
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 16
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+    btn.MouseButton1Click:Connect(function()
+        _G.SelectedWeapon = weapon
+        print("선택된 무기:", weapon)
+    end)
 end
 
--- 루프 함수들
-local function startAutoDodge()
-	while _G.AutoDodge do
-		pcall(function()
-			local rf = ReplicatedStorage:FindFirstChild("Remotes")
-				and ReplicatedStorage.Remotes:FindFirstChild("Information")
-				and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
-			if rf then
-				rf:FireServer({true, true}, "DodgeMinigame")
-			end
-		end)
-		task.wait(0.2)
-	end
+-- 텔레포트 탭
+local teleportTab = tabs["텔레포트"]
+local scrollFrame = Instance.new("ScrollingFrame", teleportTab)
+scrollFrame.Size = UDim2.new(1, -20, 1, -80)
+scrollFrame.Position = UDim2.new(0, 10, 0, 10)
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollFrame.ScrollBarThickness = 8
+scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrollFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+local UIList = Instance.new("UIListLayout", scrollFrame)
+UIList.Padding = UDim.new(0, 5)
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local npcButtons = {}
+local selectedNPC = nil
+
+local function loadNPCs()
+    for _, btn in pairs(npcButtons) do btn:Destroy() end
+    npcButtons = {}
+    selectedNPC = nil
+
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, 0, 0, 25)
+            btn.Text = obj.Name
+            btn.Font = Enum.Font.SourceSans
+            btn.TextSize = 14
+            btn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+            btn.TextColor3 = Color3.new(1, 1, 1)
+            btn.MouseButton1Click:Connect(function()
+                selectedNPC = obj
+                for _, b in ipairs(npcButtons) do b.BackgroundColor3 = Color3.fromRGB(90, 90, 90) end
+                btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+            end)
+            btn.Parent = scrollFrame
+            table.insert(npcButtons, btn)
+        end
+    end
 end
 
-local function startAutoQTE()
-	while _G.AutoQTE do
-		pcall(function()
-			local rf = ReplicatedStorage:FindFirstChild("Remotes")
-				and ReplicatedStorage.Remotes:FindFirstChild("Information")
-				and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
-			if rf then
-				local qteName = _G.SelectedWeapon .. "QTE"
-				rf:FireServer(true, qteName)
-			end
-		end)
-		task.wait(0.4)
-	end
+local function fastTeleportTo(target)
+    if not target or not target:FindFirstChild("HumanoidRootPart") then return end
+    local speed = 200
+    local targetPos = target.HumanoidRootPart.Position
+    local direction = (targetPos - humanoidRootPart.Position).Unit
+    local distance = (targetPos - humanoidRootPart.Position).Magnitude
+    local duration = distance / speed
+
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then part.CanCollide = false end
+    end
+
+    local startTime = tick()
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        local elapsed = tick() - startTime
+        if elapsed >= duration then
+            humanoidRootPart.CFrame = CFrame.new(targetPos)
+            connection:Disconnect()
+            return
+        end
+        humanoidRootPart.CFrame = humanoidRootPart.CFrame + direction * speed * RunService.Heartbeat:Wait()
+    end)
 end
 
-local function startAutoThorian()
-	while _G.AutoThorian do
-		pcall(function()
-			local rf = ReplicatedStorage:FindFirstChild("Remotes")
-				and ReplicatedStorage.Remotes:FindFirstChild("Information")
-				and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
-			if rf then
-				rf:FireServer(true, "ThorianQTE")
-			end
-		end)
-		task.wait(0.4)
-	end
-end
+local reloadBtn = Instance.new("TextButton", teleportTab)
+reloadBtn.Size = UDim2.new(0.5, -15, 0, 30)
+reloadBtn.Position = UDim2.new(0, 10, 1, -40)
+reloadBtn.Text = "🔄 다시 불러오기"
+reloadBtn.Font = Enum.Font.SourceSansBold
+reloadBtn.TextSize = 14
+reloadBtn.TextColor3 = Color3.new(1, 1, 1)
+reloadBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+reloadBtn.MouseButton1Click:Connect(loadNPCs)
 
--- 버튼 연결
-local dodgeTask, qteTask, thorianTask = nil, nil, nil
-
-dodgeButton.MouseButton1Click:Connect(function()
-	_G.AutoDodge = not _G.AutoDodge
-	dodgeButton.Text = "자동회피: " .. (_G.AutoDodge and "ON" or "OFF")
-	if _G.AutoDodge and not dodgeTask then
-		dodgeTask = task.spawn(startAutoDodge)
-	elseif not _G.AutoDodge then
-		dodgeTask = nil
-	end
-end)
-
-qteButton.MouseButton1Click:Connect(function()
-	_G.AutoQTE = not _G.AutoQTE
-	qteButton.Text = "무기 QTE: " .. (_G.AutoQTE and "ON" or "OFF")
-	if _G.AutoQTE and not qteTask then
-		qteTask = task.spawn(startAutoQTE)
-	elseif not _G.AutoQTE then
-		qteTask = nil
-	end
-end)
-
-thorianButton.MouseButton1Click:Connect(function()
-	_G.AutoThorian = not _G.AutoThorian
-	thorianButton.Text = "토리안 QTE: " .. (_G.AutoThorian and "ON" or "OFF")
-	if _G.AutoThorian and not thorianTask then
-		thorianTask = task.spawn(startAutoThorian)
-	elseif not _G.AutoThorian then
-		thorianTask = nil
-	end
-end)
-
--- GUI 드래그 가능하게
-local dragging = false
-local dragInput, startPos, startInputPos
-
-frame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = true
-		startInputPos = input.Position
-		startPos = frame.Position
-	end
-end)
-
-UIS.InputChanged:Connect(function(input)
-	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-		local delta = input.Position - startInputPos
-		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-								   startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
-end)
-
-UIS.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = false
-	end
-end)
-
--- K 키로 숨기기/보이기
-UIS.InputBegan:Connect(function(input, processed)
-	if not processed and input.KeyCode == Enum.KeyCode.K then
-		frame.Visible = not frame.Visible
-	end
-end)
+local tpBtn = Instance.new("TextButton", teleportTab)
+tpBtn.Size = UDim2.new(0.5, -15, 0, 30)
+tpBtn.Position = UDim2.new(0.5, 5, 1, -40)
+tpBtn.Text = "🚀 이동"
+tpBtn.Font = Enum.Font.SourceSansBold
