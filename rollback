@@ -36,8 +36,7 @@ createButton("RollbackButton", UDim2.new(0, 100, 0, 100), "Rollback", function()
         for _, item in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do
             table.insert(rollbackData.inventory, {
                 name = item.Name,
-                attributes = item:GetAttributes(),
-                children = {}
+                attributes = item:GetAttributes()
             })
         end
 
@@ -71,7 +70,7 @@ createButton("RejoinButton", UDim2.new(0, 100, 0, 160), "Rejoin and Dupe", funct
 
         -- 캐릭터 상태 복원
         local character = game.Players.LocalPlayer.Character
-        character:SetPrimaryPartCFrame(CFrame.new(rollbackData.character.position, rollbackData.character.rotation))
+        character:SetPrimaryPartCFrame(CFrame.new(rollbackData.character.position))
         character.Humanoid.Health = rollbackData.character.health
         for attribute, value in pairs(rollbackData.character.attributes) do
             character:SetAttribute(attribute, value)
@@ -87,7 +86,8 @@ end)
 -- 거래 완료 후 재접속 함수
 local function tradeCompleted()
     wait(5) -- 거래 완료 후 5초 대기
-    game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer)  -- Teleport 방식 수정
+    local teleportService = game:GetService("TeleportService")
+    teleportService:Teleport(game.PlaceId, game.Players.LocalPlayer)  -- Teleport 방식 수정
 end
 
 -- 거래 시작 시 롤백 버튼 활성화
