@@ -33,6 +33,21 @@ title.Font = Enum.Font.SourceSansBold
 title.TextSize = 18
 title.TextColor3 = Color3.new(1, 1, 1)
 
+-- X 버튼 (닫기 버튼)
+local closeBtn = Instance.new("TextButton", frame)
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -35, 0, 5)  -- 오른쪽 상단
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.SourceSansBold
+closeBtn.TextSize = 16
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+
+closeBtn.MouseButton1Click:Connect(function()
+    gui:Destroy()  -- GUI 닫기
+end)
+
 -- 다시 불러오기 버튼
 local reloadBtn = Instance.new("TextButton", frame)
 reloadBtn.Size = UDim2.new(1, -20, 0, 30)
@@ -157,34 +172,3 @@ reloadBtn.MouseButton1Click:Connect(loadNPCs)
 
 -- 처음 로드
 loadNPCs()
-
--- K 키로 GUI 토글
-UIS.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.K then
-        frame.Visible = not frame.Visible
-    end
-end)
-
--- 드래그 기능 구현
-local dragging, dragInput, dragStart, startPos
-
-frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-    end
-end)
-
-frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
-frame.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
-end)
