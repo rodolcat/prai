@@ -1,15 +1,55 @@
--- 통합 GUI: 자동회피, 무기 QTE, 토리안 QTE, 무기 선택, NPC 텔레포트
-
 local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- GUI 생성
+local gui = Instance.new("ScreenGui")
+gui.Name = "AutoSystemUI"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+-- 프레임
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 230, 0, 320)
+frame.Position = UDim2.new(0.6, -100, 0.5, -160) -- 오른쪽 중간
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+frame.Parent = gui
+
+-- 자동회피 버튼
+local dodgeButton = Instance.new("TextButton", frame)
+dodgeButton.Size = UDim2.new(1, -20, 0, 40)
+dodgeButton.Position = UDim2.new(0, 10, 0, 10)
+dodgeButton.Text = "자동회피: OFF"
+dodgeButton.Font = Enum.Font.SourceSansBold
+dodgeButton.TextSize = 18
+dodgeButton.TextColor3 = Color3.new(1, 1, 1)
+dodgeButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+
+-- 무기 QTE 버튼
+local qteButton = Instance.new("TextButton", frame)
+qteButton.Size = UDim2.new(1, -20, 0, 40)
+qteButton.Position = UDim2.new(0, 10, 0, 60)
+qteButton.Text = "무기 QTE: OFF"
+qteButton.Font = Enum.Font.SourceSansBold
+qteButton.TextSize = 18
+qteButton.TextColor3 = Color3.new(1, 1, 1)
+qteButton.BackgroundColor3 = Color3.fromRGB(180, 100, 70)
+
+-- 토리안 QTE 버튼
+local thorianButton = Instance.new("TextButton", frame)
+thorianButton.Size = UDim2.new(1, -20, 0, 40)
+thorianButton.Position = UDim2.new(0, 10, 0, 110)
+thorianButton.Text = "토리안 QTE: OFF"
+thorianButton.Font = Enum.Font.SourceSansBold
+thorianButton.TextSize = 18
+thorianButton.TextColor3 = Color3.new(1, 1, 1)
+thorianButton.BackgroundColor3 = Color3.fromRGB(140, 70, 180)
 
 -- 상태 변수
 _G.AutoDodge = false
@@ -21,159 +61,179 @@ local autoDodgeTask = nil
 local autoQteTask = nil
 local autoThorianTask = nil
 
--- GUI 생성
-local gui = Instance.new("ScreenGui")
-gui.Name = "AutoSystemUI"
-gui.ResetOnSpawn = false
-gui.Parent = playerGui
-
--- 프레임
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 330, 0, 400)
-frame.Position = UDim2.new(0.7, -150, 0.5, -200)
-frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.Draggable = true
-frame.Parent = gui
-
--- 탭 생성
-local tabButtons = {}
-local tabs = {}
-local tabNames = {"자동", "무기선택", "텔레포트"}
-
-local tabBar = Instance.new("Frame", frame)
-tabBar.Size = UDim2.new(1, 0, 0, 30)
-tabBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-
-for i, name in ipairs(tabNames) do
-    local tabBtn = Instance.new("TextButton", tabBar)
-    tabBtn.Size = UDim2.new(0, 100, 1, 0)
-    tabBtn.Position = UDim2.new(0, (i - 1) * 110, 0, 0)
-    tabBtn.Text = name
-    tabBtn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
-    tabBtn.TextColor3 = Color3.new(1, 1, 1)
-    tabBtn.Font = Enum.Font.SourceSansBold
-    tabBtn.TextSize = 14
-    tabButtons[name] = tabBtn
-end
-
--- 탭 컨테이너
-for _, name in ipairs(tabNames) do
-    local tab = Instance.new("Frame", frame)
-    tab.Size = UDim2.new(1, 0, 1, -30)
-    tab.Position = UDim2.new(0, 0, 0, 30)
-    tab.BackgroundTransparency = 1
-    tab.Visible = false
-    tabs[name] = tab
-end
-
--- 탭 전환 함수
-local function switchTab(tabName)
-    for name, tab in pairs(tabs) do
-        tab.Visible = (name == tabName)
-    end
-end
-
-for name, btn in pairs(tabButtons) do
-    btn.MouseButton1Click:Connect(function()
-        switchTab(name)
-    end)
-end
-switchTab("자동")
-
--- 자동 탭
-local autoTab = tabs["자동"]
-local function createAutoButton(text, posY, toggleVar, toggleFunc)
-    local btn = Instance.new("TextButton", autoTab)
-    btn.Size = UDim2.new(1, -20, 0, 40)
-    btn.Position = UDim2.new(0, 10, 0, posY)
-    btn.Text = text .. ": OFF"
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 18
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
-    btn.MouseButton1Click:Connect(function()
-        _G[toggleVar] = not _G[toggleVar]
-        btn.Text = text .. ": " .. (_G[toggleVar] and "ON" or "OFF")
-        if _G[toggleVar] then
-            if not _G[toggleFunc] then
-                _G[toggleFunc] = task.spawn(_G["start" .. toggleFunc])
-            end
-        else
-            _G[toggleFunc] = nil
-        end
-    end)
-end
-
-createAutoButton("자동회피", 10, "AutoDodge", "autoDodgeTask")
-createAutoButton("무기 QTE", 60, "AutoQTE", "autoQteTask")
-createAutoButton("토리안 QTE", 110, "AutoThorian", "autoThorianTask")
-
-function _G.startautoDodgeTask()
-    while _G.AutoDodge do
-        pcall(function()
-            local rf = ReplicatedStorage:FindFirstChild("Remotes")
-                and ReplicatedStorage.Remotes:FindFirstChild("Information")
-                and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
-            if rf then rf:FireServer({true, true}, "DodgeMinigame") end
-        end)
-        task.wait(0.2)
-    end
-end
-
-function _G.startautoQteTask()
-    while _G.AutoQTE do
-        pcall(function()
-            local rf = ReplicatedStorage:FindFirstChild("Remotes")
-                and ReplicatedStorage.Remotes:FindFirstChild("Information")
-                and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
-            if rf then rf:FireServer(true, _G.SelectedWeapon .. "QTE") end
-        end)
-        task.wait(0.4)
-    end
-end
-
-function _G.startautoThorianTask()
-    while _G.AutoThorian do
-        pcall(function()
-            local rf = ReplicatedStorage:FindFirstChild("Remotes")
-                and ReplicatedStorage.Remotes:FindFirstChild("Information")
-                and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
-            if rf then rf:FireServer(true, "ThorianQTE") end
-        end)
-        task.wait(0.4)
-    end
-end
-
--- 무기 선택 탭
-local weaponTab = tabs["무기선택"]
+-- 무기 선택 버튼 생성
 local weapons = {"Sword", "Spear", "Magic", "Dagger", "Fist"}
-
 for i, weapon in ipairs(weapons) do
-    local btn = Instance.new("TextButton", weaponTab)
-    btn.Size = UDim2.new(0, 130, 0, 30)
-    btn.Position = UDim2.new(0, 10 + ((i - 1) % 2) * 140, 0, 10 + math.floor((i - 1) / 2) * 40)
-    btn.Text = weapon
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 16
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
-    btn.MouseButton1Click:Connect(function()
+    local button = Instance.new("TextButton", frame)
+    button.Size = UDim2.new(0, 100, 0, 25)
+    button.Position = UDim2.new(0, 10 + ((i - 1) % 2) * 110, 0, 170 + math.floor((i - 1) / 2) * 30)
+    button.Text = weapon
+    button.Font = Enum.Font.SourceSans
+    button.TextSize = 14
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+
+    button.MouseButton1Click:Connect(function()
         _G.SelectedWeapon = weapon
         print("선택된 무기:", weapon)
     end)
 end
 
--- 텔레포트 탭
-local teleportTab = tabs["텔레포트"]
-local scrollFrame = Instance.new("ScrollingFrame", teleportTab)
-scrollFrame.Size = UDim2.new(1, -20, 1, -80)
-scrollFrame.Position = UDim2.new(0, 10, 0, 10)
+-- 자동회피 루프
+local function startAutoDodge()
+    while _G.AutoDodge do
+        pcall(function()
+            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+            if remotes then
+                local info = remotes:FindFirstChild("Information")
+                local rf = info and info:FindFirstChild("RemoteFunction")
+                if rf then
+                    rf:FireServer({true, true}, "DodgeMinigame")
+                end
+            end
+        end)
+        wait(0.2)
+    end
+end
+
+-- 무기 QTE 루프
+local function startAutoQTE()
+    while _G.AutoQTE do
+        pcall(function()
+            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+            if remotes then
+                local info = remotes:FindFirstChild("Information")
+                local rf = info and info:FindFirstChild("RemoteFunction")
+                if rf then
+                    local qteName = _G.SelectedWeapon .. "QTE"
+                    rf:FireServer(true, qteName)
+                end
+            end
+        end)
+        wait(0.4)
+    end
+end
+
+-- 토리안 QTE 루프
+local function startAutoThorianQTE()
+    while _G.AutoThorian do
+        pcall(function()
+            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+            if remotes then
+                local info = remotes:FindFirstChild("Information")
+                local rf = info and info:FindFirstChild("RemoteFunction")
+                if rf then
+                    rf:FireServer(true, "ThorianQTE")
+                end
+            end
+        end)
+        wait(0.4)
+    end
+end
+
+-- 버튼 토글 연결
+dodgeButton.MouseButton1Click:Connect(function()
+    _G.AutoDodge = not _G.AutoDodge
+    dodgeButton.Text = "자동회피: " .. (_G.AutoDodge and "ON" or "OFF")
+    if _G.AutoDodge and not autoDodgeTask then
+        autoDodgeTask = task.spawn(startAutoDodge)
+    elseif not _G.AutoDodge then
+        autoDodgeTask = nil
+    end
+end)
+
+qteButton.MouseButton1Click:Connect(function()
+    _G.AutoQTE = not _G.AutoQTE
+    qteButton.Text = "무기 QTE: " .. (_G.AutoQTE and "ON" or "OFF")
+    if _G.AutoQTE and not autoQteTask then
+        autoQteTask = task.spawn(startAutoQTE)
+    elseif not _G.AutoQTE then
+        autoQteTask = nil
+    end
+end)
+
+thorianButton.MouseButton1Click:Connect(function()
+    _G.AutoThorian = not _G.AutoThorian
+    thorianButton.Text = "토리안 QTE: " .. (_G.AutoThorian and "ON" or "OFF")
+    if _G.AutoThorian and not autoThorianTask then
+        autoThorianTask = task.spawn(startAutoThorianQTE)
+    elseif not _G.AutoThorian then
+        autoThorianTask = nil
+    end
+end)
+
+-- 드래그 기능
+local dragging, startMouse, startPos = false, nil, nil
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        startMouse = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - startMouse
+        frame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- K키로 GUI 숨기기/보이기
+UIS.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.K then
+        frame.Visible = not frame.Visible
+    end
+end)
+
+-- 텔레포트 UI 생성
+local teleportFrame = Instance.new("Frame")
+teleportFrame.Size = UDim2.new(0, 300, 0, 400)
+teleportFrame.Position = UDim2.new(0.85, -150, 0.5, -200)
+teleportFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+teleportFrame.Active = true
+teleportFrame.Draggable = true
+teleportFrame.Parent = gui
+Instance.new("UICorner", teleportFrame).CornerRadius = UDim.new(0, 10)
+
+-- 타이틀
+local title = Instance.new("TextLabel", teleportFrame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "🧭 NPC 빠른이동"
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 18
+title.TextColor3 = Color3.new(1, 1, 1)
+
+-- 다시 불러오기 버튼
+local reloadBtn = Instance.new("TextButton", teleportFrame)
+reloadBtn.Size = UDim2.new(1, -20, 0, 30)
+reloadBtn.Position = UDim2.new(0, 10, 0, 40)
+reloadBtn.Text = "🔄 NPC 다시 불러오기"
+reloadBtn.Font = Enum.Font.SourceSansBold
+reloadBtn.TextSize = 14
+reloadBtn.TextColor3 = Color3.new(1, 1, 1)
+reloadBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+Instance.new("UICorner", reloadBtn).CornerRadius = UDim.new(0, 6)
+
+-- 스크롤 컨테이너
+local scrollFrame = Instance.new("ScrollingFrame", teleportFrame)
+scrollFrame.Size = UDim2.new(1, -20, 1, -140)
+scrollFrame.Position = UDim2.new(0, 10, 0, 80)
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 scrollFrame.ScrollBarThickness = 8
+scrollFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-scrollFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+scrollFrame.ClipsDescendants = true
 
 local UIList = Instance.new("UIListLayout", scrollFrame)
 UIList.Padding = UDim.new(0, 5)
@@ -182,68 +242,94 @@ UIList.SortOrder = Enum.SortOrder.LayoutOrder
 local npcButtons = {}
 local selectedNPC = nil
 
+-- NPC 불러오기 함수
 local function loadNPCs()
-    for _, btn in pairs(npcButtons) do btn:Destroy() end
+    for _, btn in pairs(npcButtons) do
+        btn:Destroy()
+    end
     npcButtons = {}
     selectedNPC = nil
 
+    local allNPCs = {}
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, 25)
-            btn.Text = obj.Name
-            btn.Font = Enum.Font.SourceSans
-            btn.TextSize = 14
-            btn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
-            btn.TextColor3 = Color3.new(1, 1, 1)
-            btn.MouseButton1Click:Connect(function()
-                selectedNPC = obj
-                for _, b in ipairs(npcButtons) do b.BackgroundColor3 = Color3.fromRGB(90, 90, 90) end
-                btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-            end)
-            btn.Parent = scrollFrame
-            table.insert(npcButtons, btn)
+            table.insert(allNPCs, obj)
         end
+    end
+
+    for i, npc in ipairs(allNPCs) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 25)
+        btn.Text = npc.Name
+        btn.Font = Enum.Font.SourceSans
+        btn.TextSize = 14
+        btn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+
+        btn.MouseButton1Click:Connect(function()
+            selectedNPC = npc
+            for _, other in ipairs(npcButtons) do
+                other.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+            end
+            btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+        end)
+
+        btn.Parent = scrollFrame
+        table.insert(npcButtons, btn)
     end
 end
 
+-- 텔레포트 함수
 local function fastTeleportTo(target)
     if not target or not target:FindFirstChild("HumanoidRootPart") then return end
+
+    -- 이동 속도 설정
     local speed = 200
     local targetPos = target.HumanoidRootPart.Position
     local direction = (targetPos - humanoidRootPart.Position).Unit
     local distance = (targetPos - humanoidRootPart.Position).Magnitude
     local duration = distance / speed
 
-    for _, part in ipairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then part.CanCollide = false end
+    -- 충돌 감지 비활성화
+    for _, part in ipairs(player.Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
     end
 
+    -- 빠르게 이동
     local startTime = tick()
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
-        local elapsed = tick() - startTime
-        if elapsed >= duration then
-            humanoidRootPart.CFrame = CFrame.new(targetPos)
-            connection:Disconnect()
-            return
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+    local goal = {Position = targetPos}
+    local tween = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, tweenInfo, goal)
+    tween:Play()
+    tween.Completed:Connect(function()
+        -- 도착 후 충돌 감지 다시 활성화
+        for _, part in ipairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
         end
-        humanoidRootPart.CFrame = humanoidRootPart.CFrame + direction * speed * RunService.Heartbeat:Wait()
     end)
 end
 
-local reloadBtn = Instance.new("TextButton", teleportTab)
-reloadBtn.Size = UDim2.new(0.5, -15, 0, 30)
-reloadBtn.Position = UDim2.new(0, 10, 1, -40)
-reloadBtn.Text = "🔄 다시 불러오기"
-reloadBtn.Font = Enum.Font.SourceSansBold
-reloadBtn.TextSize = 14
-reloadBtn.TextColor3 = Color3.new(1, 1, 1)
-reloadBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 reloadBtn.MouseButton1Click:Connect(loadNPCs)
+loadNPCs()
 
-local tpBtn = Instance.new("TextButton", teleportTab)
-tpBtn.Size = UDim2.new(0.5, -15, 0, 30)
-tpBtn.Position = UDim2.new(0.5, 5, 1, -40)
-tpBtn.Text = "🚀 이동"
-tpBtn.Font = Enum.Font.SourceSansBold
+-- 텔레포트 버튼 연결
+local teleportBtn = Instance.new("TextButton", teleportFrame)
+teleportBtn.Size = UDim2.new(1, -20, 0, 30)
+teleportBtn.Position = UDim2.new(0, 10, 0, 320)
+teleportBtn.Text = "텔레포트"
+teleportBtn.Font = Enum.Font.SourceSansBold
+teleportBtn.TextSize = 14
+teleportBtn.TextColor3 = Color3.new(1, 1, 1)
+teleportBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+Instance.new("UICorner", teleportBtn).CornerRadius = UDim.new(0, 6)
+
+teleportBtn.MouseButton1Click:Connect(function()
+    if selectedNPC then
+        fastTeleportTo(selectedNPC)
+    end
+end)
