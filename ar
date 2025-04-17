@@ -14,11 +14,10 @@ local Window1 = library.NewWindow({
     size = UDim2.new(0, 510, 0.6, 6),
     position = UDim2.new(0.5, -255, 0.5, -180)  -- center the window on screen
 })
-print("Window created")
 
--- Toggle the window to make sure it's visible
+-- Ensure that the window is toggled visible
 Window1:toggle()
-print("UI visible")
+print("Window visible")
 
 -- Add a tab
 local Tab1 = Window1:AddTab("Auto System")
