@@ -14,7 +14,7 @@ gui.Parent = playerGui
 -- 프레임
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 230, 0, 320)
-frame.Position = UDim2.new(0.6, -100, 0.5, -160)
+frame.Position = UDim2.new(0.6, -100, 0.5, -160) -- 오른쪽 중간
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.BorderSizePixel = 0
 frame.Parent = gui
@@ -29,7 +29,7 @@ dodgeButton.TextSize = 18
 dodgeButton.TextColor3 = Color3.new(1, 1, 1)
 dodgeButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
 
--- 무기기 QTE 버튼
+-- 무기 QTE 버튼
 local qteButton = Instance.new("TextButton", frame)
 qteButton.Size = UDim2.new(1, -20, 0, 40)
 qteButton.Position = UDim2.new(0, 10, 0, 60)
@@ -39,7 +39,7 @@ qteButton.TextSize = 18
 qteButton.TextColor3 = Color3.new(1, 1, 1)
 qteButton.BackgroundColor3 = Color3.fromRGB(180, 100, 70)
 
--- 자동 Thorian QTE 버튼
+-- 토리안 QTE 버튼
 local thorianButton = Instance.new("TextButton", frame)
 thorianButton.Size = UDim2.new(1, -20, 0, 40)
 thorianButton.Position = UDim2.new(0, 10, 0, 110)
@@ -59,7 +59,7 @@ local autoDodgeTask = nil
 local autoQteTask = nil
 local autoThorianTask = nil
 
--- 무기 버튼 생성
+-- 무기 선택 버튼 생성
 local weapons = {"Sword", "Spear", "Magic", "Dagger", "Fist"}
 for i, weapon in ipairs(weapons) do
     local button = Instance.new("TextButton", frame)
@@ -94,7 +94,7 @@ local function startAutoDodge()
     end
 end
 
--- 자동 무기 QTE 루프
+-- 무기 QTE 루프
 local function startAutoQTE()
     while _G.AutoQTE do
         pcall(function()
@@ -112,7 +112,7 @@ local function startAutoQTE()
     end
 end
 
--- 자동 Thorian QTE 루프
+-- 토리안 QTE 루프
 local function startAutoThorianQTE()
     while _G.AutoThorian do
         pcall(function()
@@ -132,7 +132,7 @@ end
 -- 버튼 토글 연결
 dodgeButton.MouseButton1Click:Connect(function()
     _G.AutoDodge = not _G.AutoDodge
-    dodgeButton.Text = "무기회피: " .. (_G.AutoDodge and "ON" or "OFF")
+    dodgeButton.Text = "자동회피: " .. (_G.AutoDodge and "ON" or "OFF")
     if _G.AutoDodge and not autoDodgeTask then
         autoDodgeTask = task.spawn(startAutoDodge)
     elseif not _G.AutoDodge then
