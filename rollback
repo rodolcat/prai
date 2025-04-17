@@ -7,12 +7,16 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- ScreenGui 자동 생성 (UI 배치)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = playerGui
+
 -- SaveButton UI 자동 생성
 local saveButton = Instance.new("TextButton")
 saveButton.Size = UDim2.new(0, 200, 0, 50)
 saveButton.Position = UDim2.new(0.5, -100, 0.5, -25)
 saveButton.Text = "데이터 저장"
-saveButton.Parent = playerGui
+saveButton.Parent = screenGui
 
 -- 버튼 클릭 시 서버로 저장 요청 보내는 이벤트
 saveButton.MouseButton1Click:Connect(function()
