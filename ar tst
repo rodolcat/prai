@@ -30,6 +30,7 @@ button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
 
 -- 자동회피 변수
 _G.AutoDodge = false
+local autoDodgeTask = nil  -- 자동회피 루프를 저장할 변수
 
 -- 자동회피 루프
 local function startAutoDodge()
@@ -44,7 +45,7 @@ local function startAutoDodge()
                 end
             end
         end)
-        wait(0.05)
+        wait(0.2)  -- 딜레이 시간 설정
     end
 end
 
@@ -52,8 +53,15 @@ end
 button.MouseButton1Click:Connect(function()
     _G.AutoDodge = not _G.AutoDodge
     button.Text = "자동회피: " .. (_G.AutoDodge and "ON" or "OFF")
+    
     if _G.AutoDodge then
-        task.spawn(startAutoDodge)
+        -- 이미 실행 중인 자동회피 작업이 없다면 새로 시작
+        if not autoDodgeTask then
+            autoDodgeTask = task.spawn(startAutoDodge)
+        end
+    else
+        -- 자동회피를 끄면 루프를 종료하고 변수 초기화
+        autoDodgeTask = nil
     end
 end)
 
