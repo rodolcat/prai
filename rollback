@@ -8,90 +8,77 @@ local camera = workspace.CurrentCamera
 
 local flying = false
 local velocity, gyro
-local speed = 200
+local speed = 100
 
-local moveDirection = Vector3.zero
+local keysDown = {}
 
 player.CharacterAdded:Connect(function(char)
 	character = char
 end)
 
--- 입력 방향 계산
+-- 키 입력 기록
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
+	keysDown[input.KeyCode] = true
 
 	if input.KeyCode == Enum.KeyCode.L then
 		flying = not flying
-
+		local humanoid = character:WaitForChild("Humanoid")
 		local hrp = character:WaitForChild("HumanoidRootPart")
 
 		if flying then
-			-- 중력 영향 제거
-			character:WaitForChild("Humanoid").PlatformStand = true
+			humanoid.PlatformStand = true
 
-			-- 이동용 BodyVelocity
+			-- 비행용 속도
 			velocity = Instance.new("BodyVelocity")
 			velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
 			velocity.Velocity = Vector3.zero
 			velocity.Name = "FlyVelocity"
 			velocity.Parent = hrp
 
-			-- 방향 고정용 BodyGyro
+			-- 회전 고정
 			gyro = Instance.new("BodyGyro")
-			gyro.MaxTorque = Vector3.new(0, math.huge, 0)
-			gyro.P = 10000
+			gyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+			gyro.P = 100000
 			gyro.CFrame = hrp.CFrame
 			gyro.Name = "FlyGyro"
 			gyro.Parent = hrp
 		else
-			-- 비행 해제
-			character:WaitForChild("Humanoid").PlatformStand = false
-
-			if velocity then
-				velocity:Destroy()
-			end
-			if gyro then
-				gyro:Destroy()
-			end
+			humanoid.PlatformStand = false
+			if velocity then velocity:Destroy() end
+			if gyro then gyro:Destroy() end
 		end
 	end
-end)
-
--- 이동 방향 업데이트
-local keysDown = {}
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	keysDown[input.KeyCode] = true
 end)
 
 UserInputService.InputEnded:Connect(function(input)
 	keysDown[input.KeyCode] = nil
 end)
 
+-- 매 프레임마다 이동 처리
 RunService.RenderStepped:Connect(function()
 	if flying and velocity and gyro then
-		local moveVec = Vector3.zero
+		local camCF = camera.CFrame
+		local moveDir = Vector3.zero
 
 		if keysDown[Enum.KeyCode.W] then
-			moveVec += camera.CFrame.LookVector
+			moveDir += camCF.LookVector
 		end
 		if keysDown[Enum.KeyCode.S] then
-			moveVec -= camera.CFrame.LookVector
+			moveDir -= camCF.LookVector
 		end
 		if keysDown[Enum.KeyCode.A] then
-			moveVec -= camera.CFrame.RightVector
+			moveDir -= camCF.RightVector
 		end
 		if keysDown[Enum.KeyCode.D] then
-			moveVec += camera.CFrame.RightVector
+			moveDir += camCF.RightVector
 		end
 
-		moveVec = Vector3.new(moveVec.X, 0, moveVec.Z).Unit * speed
-		if moveVec.Magnitude ~= moveVec.Magnitude then
-			moveVec = Vector3.zero -- NaN 방지
+		if moveDir.Magnitude > 0 then
+			moveDir = moveDir.Unit * speed
 		end
 
-		velocity.Velocity = moveVec
-		gyro.CFrame = CFrame.new(character.HumanoidRootPart.Position, character.HumanoidRootPart.Position + camera.CFrame.LookVector)
+		velocity.Velocity = moveDir
+		gyro.CFrame = CFrame.new(character.HumanoidRootPart.Position, character.HumanoidRootPart.Position + camCF.LookVector)
 	end
 end)
