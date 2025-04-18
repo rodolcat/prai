@@ -33,7 +33,6 @@ title.Font = Enum.Font.SourceSansBold
 title.TextSize = 18
 title.TextColor3 = Color3.new(1, 1, 1)
 title.TextXAlignment = Enum.TextXAlignment.Left
-
 -- X 버튼
 local closeBtn = Instance.new("TextButton", frame)
 closeBtn.Size = UDim2.new(0, 25, 0, 25)
@@ -222,166 +221,97 @@ UIS.InputChanged:Connect(function(input)
         )
     end
 end)
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
+-- Services
+local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-local playerGui = player:WaitForChild("PlayerGui")
+-- LocalPlayer
+local player    = Players.LocalPlayer
+local char      = player.Character or player.CharacterAdded:Wait()
+local hrp       = char:WaitForChild("HumanoidRootPart")
+local guiParent = player:WaitForChild("PlayerGui")
 
--- GUI 생성
-local gui = Instance.new("ScreenGui")
-gui.Name = "TeleportUI"
-gui.ResetOnSpawn = false
-gui.Parent = playerGui
+-- UI 생성
+local screenGui = Instance.new("ScreenGui", guiParent)
+screenGui.ResetOnSpawn = false
 
--- 프레임
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 450)
-frame.Position = UDim2.new(0.85, -150, 0.5, -225)
-frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-frame.Active = true
-frame.Parent = gui
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 200, 0, 300)
+frame.Position = UDim2.new(0, 10, 0, 50)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,6)
 
--- 타이틀
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, -40, 0, 30)
-title.Position = UDim2.new(0, 10, 0, 5)
-title.Text = "🧭 플레이어 빠른이동"
-title.BackgroundTransparency = 1
+title.Size = UDim2.new(1,0,0,24)
+title.Position = UDim2.new(0,0,0,0)
+title.Text = "▶ 플레이어 목록"
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 18
-title.TextColor3 = Color3.new(1, 1, 1)
-title.TextXAlignment = Enum.TextXAlignment.Left
+title.TextColor3 = Color3.new(1,1,1)
+title.BackgroundTransparency = 1
 
--- X 버튼
-local closeBtn = Instance.new("TextButton", frame)
-closeBtn.Size = UDim2.new(0, 25, 0, 25)
-closeBtn.Position = UDim2.new(1, -30, 0, 5)
-closeBtn.Text = "❌"
-closeBtn.Font = Enum.Font.SourceSansBold
-closeBtn.TextSize = 16
-closeBtn.TextColor3 = Color3.new(1, 1, 1)
-closeBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Size = UDim2.new(1,0,1,-24)
+scroll.Position = UDim2.new(0,0,0,24)
+scroll.BackgroundTransparency = 1
+scroll.CanvasSize = UDim2.new(0,0,0,0)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.ScrollBarThickness = 6
 
-closeBtn.MouseButton1Click:Connect(function()
-    frame.Visible = false
-end)
+local layout = Instance.new("UIListLayout", scroll)
+layout.Padding = UDim.new(0,4)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- 플레이어 목록 불러오기
-local function loadPlayers()
-    local players = {}
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= player then  -- 본인 제외
-            table.insert(players, plr)
-        end
+-- 비행 이동 함수
+local function flyTo(targetPos)
+    -- 노클립
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then part.CanCollide = false end
     end
-    return players
+
+    local speed = 200
+    local dir   = (targetPos - hrp.Position).Unit
+
+    -- 매 프레임 속도 설정
+    local conn
+    conn = RunService.RenderStepped:Connect(function(dt)
+        local dist = (targetPos - hrp.Position).Magnitude
+        if dist < 3 then
+            hrp.CFrame = CFrame.new(targetPos)
+            conn:Disconnect()
+            return
+        end
+        hrp.AssemblyLinearVelocity = dir * speed
+    end)
 end
 
 -- 플레이어 버튼 생성
-local function createPlayerButton(player)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 25)
-    btn.Text = player.Name
-    btn.Font = Enum.Font.SourceSans
-    btn.TextSize = 14
-    btn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+local function refreshList()
+    -- 기존 버튼 제거
+    for _, child in ipairs(scroll:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
 
-    btn.MouseButton1Click:Connect(function()
-        local targetCharacter = player.Character
-        if targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart") then
-            moveToPlayer(targetCharacter)
-        end
-    end)
+    -- 플레이어마다 버튼 만들기
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local btn = Instance.new("TextButton", scroll)
+            btn.Size = UDim2.new(1, -4, 0, 30)
+            btn.Text = plr.Name
+            btn.Font = Enum.Font.SourceSans
+            btn.TextSize = 14
+            btn.TextColor3 = Color3.new(1,1,1)
+            btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0,4)
 
-    return btn
-end
-
--- 이동 함수
-local function moveToPlayer(targetCharacter)
-    local targetPos = targetCharacter.HumanoidRootPart.Position
-    local distance = (targetPos - humanoidRootPart.Position).Magnitude
-    local speed = 100  -- 이동 속도
-    local duration = distance / speed
-
-    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-    local goal = {Position = targetPos}
-
-    local tween = TweenService:Create(humanoidRootPart, tweenInfo, goal)
-    tween:Play()
-end
-
--- 플레이어 버튼들 생성
-local function updatePlayerList()
-    -- 기존 버튼들 삭제
-    for _, btn in pairs(frame:GetChildren()) do
-        if btn:IsA("TextButton") and btn.Text ~= "❌" and btn.Text ~= "🔄 플레이어 다시 불러오기" then
-            btn:Destroy()
+            btn.MouseButton1Click:Connect(function()
+                flyTo(plr.Character.HumanoidRootPart.Position + Vector3.new(0,3,0))
+            end)
         end
     end
-
-    local players = loadPlayers()
-    for _, plr in pairs(players) do
-        local playerBtn = createPlayerButton(plr)
-        playerBtn.Parent = frame
-    end
 end
 
--- 플레이어 리스트 새로 고침 버튼
-local reloadBtn = Instance.new("TextButton", frame)
-reloadBtn.Size = UDim2.new(1, -20, 0, 30)
-reloadBtn.Position = UDim2.new(0, 10, 0, 40)
-reloadBtn.Text = "🔄 플레이어 다시 불러오기"
-reloadBtn.Font = Enum.Font.SourceSansBold
-reloadBtn.TextSize = 14
-reloadBtn.TextColor3 = Color3.new(1, 1, 1)
-reloadBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-Instance.new("UICorner", reloadBtn).CornerRadius = UDim.new(0, 6)
-
-reloadBtn.MouseButton1Click:Connect(updatePlayerList)
-
--- GUI 처음 불러오기
-updatePlayerList()
-
--- 커스텀 드래그 기능
-local dragging = false
-local dragInput, dragStart, startPos
-
-frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UIS.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(
-            startPos.X.Scale, startPos.X.Offset + delta.X,
-            startPos.Y.Scale, startPos.Y.Offset + delta.Y
-        )
-    end
-end)
+-- 초기화 및 갱신
+refreshList()
+Players.PlayerAdded:Connect(refreshList)
+Players.PlayerRemoving:Connect(refreshList)
