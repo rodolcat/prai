@@ -328,6 +328,7 @@ local function loadPlayers()
         btn.TextColor3 = Color3.new(1, 1, 1)
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 
+        -- 버튼 클릭 시 이동
         btn.MouseButton1Click:Connect(function()
             local targetPlayer = p
             fastTeleportTo(targetPlayer)  -- 텔레포트 기능 호출
