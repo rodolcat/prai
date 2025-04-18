@@ -1,100 +1,97 @@
--- 롤백 데이터 저장 변수
-local rollbackData = {}
-local isRollbackSaved = false
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
--- UI 생성
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "TradeDupeExploiter"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.IgnoreGuiInset = true
-ScreenGui.Parent = game:GetService("CoreGui")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local camera = workspace.CurrentCamera
 
--- 버튼 생성 함수
-local function createButton(name, position, text, callback)
-    local button = Instance.new("TextButton")
-    button.Name = name
-    button.Size = UDim2.new(0, 200, 0, 50)
-    button.Position = position
-    button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.Font = Enum.Font.SourceSans
-    button.TextSize = 24
-    button.Text = text
-    button.Parent = ScreenGui
-    button.MouseButton1Click:Connect(callback)
-end
+local flying = false
+local velocity, gyro
+local speed = 200
 
--- Rollback 버튼 기능
-createButton("RollbackButton", UDim2.new(0, 100, 0, 100), "Rollback", function()
-    if not isRollbackSaved then
-        rollbackData = {
-            inventory = {},
-            character = {}
-        }
+local moveDirection = Vector3.zero
 
-        -- 인벤토리 상태 저장
-        for _, item in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do
-            table.insert(rollbackData.inventory, {
-                name = item.Name,
-                attributes = item:GetAttributes()
-            })
-        end
-
-        -- 캐릭터 상태 저장
-        local character = game.Players.LocalPlayer.Character
-        rollbackData.character = {
-            position = character.HumanoidRootPart.Position,
-            rotation = character.HumanoidRootPart.Rotation,
-            health = character.Humanoid.Health,
-            attributes = character:GetAttributes()
-        }
-
-        isRollbackSaved = true
-        print("Rollback point saved. Ready for trade.")
-    else
-        print("Rollback already saved. Please rejoin to reset.")
-    end
+player.CharacterAdded:Connect(function(char)
+	character = char
 end)
 
--- Rejoin 버튼 기능
-createButton("RejoinButton", UDim2.new(0, 100, 0, 160), "Rejoin and Dupe", function()
-    if isRollbackSaved then
-        -- 인벤토리 복제
-        for _, itemData in ipairs(rollbackData.inventory) do
-            local newItem = Instance.new(itemData.name)
-            newItem.Parent = game.Players.LocalPlayer.Backpack
-            for attribute, value in pairs(itemData.attributes) do
-                newItem:SetAttribute(attribute, value)
-            end
-        end
+-- 입력 방향 계산
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
 
-        -- 캐릭터 상태 복원
-        local character = game.Players.LocalPlayer.Character
-        character:SetPrimaryPartCFrame(CFrame.new(rollbackData.character.position))
-        character.Humanoid.Health = rollbackData.character.health
-        for attribute, value in pairs(rollbackData.character.attributes) do
-            character:SetAttribute(attribute, value)
-        end
+	if input.KeyCode == Enum.KeyCode.L then
+		flying = not flying
 
-        isRollbackSaved = false
-        print("Rollback complete. Duplicated items added to inventory.")
-    else
-        print("No rollback point set. Please save a rollback point first.")
-    end
+		local hrp = character:WaitForChild("HumanoidRootPart")
+
+		if flying then
+			-- 중력 영향 제거
+			character:WaitForChild("Humanoid").PlatformStand = true
+
+			-- 이동용 BodyVelocity
+			velocity = Instance.new("BodyVelocity")
+			velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+			velocity.Velocity = Vector3.zero
+			velocity.Name = "FlyVelocity"
+			velocity.Parent = hrp
+
+			-- 방향 고정용 BodyGyro
+			gyro = Instance.new("BodyGyro")
+			gyro.MaxTorque = Vector3.new(0, math.huge, 0)
+			gyro.P = 10000
+			gyro.CFrame = hrp.CFrame
+			gyro.Name = "FlyGyro"
+			gyro.Parent = hrp
+		else
+			-- 비행 해제
+			character:WaitForChild("Humanoid").PlatformStand = false
+
+			if velocity then
+				velocity:Destroy()
+			end
+			if gyro then
+				gyro:Destroy()
+			end
+		end
+	end
 end)
 
--- 거래 완료 후 재접속 함수
-local function tradeCompleted()
-    wait(5) -- 거래 완료 후 5초 대기
-    local teleportService = game:GetService("TeleportService")
-    teleportService:Teleport(game.PlaceId, game.Players.LocalPlayer)  -- Teleport 방식 수정
-end
+-- 이동 방향 업데이트
+local keysDown = {}
 
--- 거래 시작 시 롤백 버튼 활성화
-game.Players.LocalPlayer.CharacterAdded:Connect(function()
-    isRollbackSaved = false
-    print("Character loaded. Rollback button is now active.")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	keysDown[input.KeyCode] = true
 end)
 
--- 거래 완료 이벤트에 재접속 함수 연결
-game:GetService("ReplicatedStorage").TradeCompleted:Connect(tradeCompleted)
+UserInputService.InputEnded:Connect(function(input)
+	keysDown[input.KeyCode] = nil
+end)
+
+RunService.RenderStepped:Connect(function()
+	if flying and velocity and gyro then
+		local moveVec = Vector3.zero
+
+		if keysDown[Enum.KeyCode.W] then
+			moveVec += camera.CFrame.LookVector
+		end
+		if keysDown[Enum.KeyCode.S] then
+			moveVec -= camera.CFrame.LookVector
+		end
+		if keysDown[Enum.KeyCode.A] then
+			moveVec -= camera.CFrame.RightVector
+		end
+		if keysDown[Enum.KeyCode.D] then
+			moveVec += camera.CFrame.RightVector
+		end
+
+		moveVec = Vector3.new(moveVec.X, 0, moveVec.Z).Unit * speed
+		if moveVec.Magnitude ~= moveVec.Magnitude then
+			moveVec = Vector3.zero -- NaN 방지
+		end
+
+		velocity.Velocity = moveVec
+		gyro.CFrame = CFrame.new(character.HumanoidRootPart.Position, character.HumanoidRootPart.Position + camera.CFrame.LookVector)
+	end
+end)
