@@ -16,7 +16,7 @@ player.CharacterAdded:Connect(function(char)
 	character = char
 end)
 
--- 키 입력 기록
+-- 키 입력 처리
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	keysDown[input.KeyCode] = true
@@ -29,14 +29,15 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if flying then
 			humanoid.PlatformStand = true
 
-			-- 비행용 속도
+			-- BodyVelocity 생성
 			velocity = Instance.new("BodyVelocity")
 			velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
 			velocity.Velocity = Vector3.zero
+			velocity.P = 1250
 			velocity.Name = "FlyVelocity"
 			velocity.Parent = hrp
 
-			-- 회전 고정
+			-- BodyGyro 생성
 			gyro = Instance.new("BodyGyro")
 			gyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
 			gyro.P = 100000
@@ -55,9 +56,9 @@ UserInputService.InputEnded:Connect(function(input)
 	keysDown[input.KeyCode] = nil
 end)
 
--- 매 프레임마다 이동 처리
+-- 매 프레임마다 이동 방향 갱신
 RunService.RenderStepped:Connect(function()
-	if flying and velocity and gyro then
+	if flying and velocity and gyro and character:FindFirstChild("HumanoidRootPart") then
 		local camCF = camera.CFrame
 		local moveDir = Vector3.zero
 
@@ -74,6 +75,7 @@ RunService.RenderStepped:Connect(function()
 			moveDir += camCF.RightVector
 		end
 
+		-- 방향이 있을 때만 단위 벡터 계산
 		if moveDir.Magnitude > 0 then
 			moveDir = moveDir.Unit * speed
 		end
