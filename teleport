@@ -226,80 +226,112 @@ end)
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
--- LocalPlayer and Character
-local player    = Players.LocalPlayer
+-- LocalPlayer
+local player = Players.LocalPlayer
+
+-- Character and HRP handling
 local character = player.Character or player.CharacterAdded:Wait()
-local hrp       = character:WaitForChild("HumanoidRootPart")
+local hrp = character:WaitForChild("HumanoidRootPart")
+character:WaitForChild("Humanoid").Died:Connect(function()
+    -- On death, update character and hrp
+    character = player.Character or player.CharacterAdded:Wait()
+    hrp = character:WaitForChild("HumanoidRootPart")
+end)
 
 -- GUI Parent
-local guiParent = player:WaitForChild("PlayerGui")
+local playerGui = player:WaitForChild("PlayerGui")
 
 -- Create ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name         = "PlayerFlyTPGui"
-screenGui.ResetOnSpawn = false
-screenGui.Parent       = guiParent
+screenGui.Name = "PlayerFlyTPGui"
+screenGui.Parent = playerGui
 
 -- Main Frame
 local frame = Instance.new("Frame")
-frame.Size               = UDim2.new(0, 300, 0, 380)
-frame.Position           = UDim2.new(0.5, -150, 0.5, -190)
-frame.BackgroundColor3   = Color3.fromRGB(40, 40, 40)
-frame.BorderSizePixel    = 0
+frame.Size = UDim2.new(0, 300, 0, 380)
+frame.Position = UDim2.new(0.5, -150, 0.5, -190)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 frame.Parent = screenGui
 
 -- Title
 local title = Instance.new("TextLabel", frame)
-title.Size               = UDim2.new(1, -20, 0, 30)
-title.Position           = UDim2.new(0, 10, 0, 10)
-title.Text               = "👥 플레이어 자동 비행 이동"
-title.Font               = Enum.Font.SourceSansBold
-title.TextSize           = 18
-title.TextColor3         = Color3.new(1,1,1)
+title.Size = UDim2.new(1, -20, 0, 30)
+title.Position = UDim2.new(0, 10, 0, 10)
+title.Text = "👥 플레이어 자동 비행 이동"
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 18
+title.TextColor3 = Color3.new(1,1,1)
 title.BackgroundTransparency = 1
 
 -- Search Box
 local searchBox = Instance.new("TextBox", frame)
-searchBox.Size                = UDim2.new(1, -20, 0, 30)
-searchBox.Position            = UDim2.new(0, 10, 0, 50)
-searchBox.PlaceholderText     = "검색: 플레이어 이름"
-searchBox.Font                = Enum.Font.SourceSans
-searchBox.TextSize            = 14
-searchBox.TextColor3          = Color3.new(1,1,1)
-searchBox.BackgroundColor3    = Color3.fromRGB(60,60,60)
+searchBox.Size = UDim2.new(1, -20, 0, 30)
+searchBox.Position = UDim2.new(0, 10, 0, 50)
+searchBox.PlaceholderText = "검색: 플레이어 이름"
+searchBox.Font = Enum.Font.SourceSans
+searchBox.TextSize = 14
+searchBox.TextColor3 = Color3.new(1,1,1)
+searchBox.BackgroundColor3 = Color3.fromRGB(60,60,60)
 Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0,6)
 
 -- Scroll Frame for Player List
 local scroll = Instance.new("ScrollingFrame", frame)
-scroll.Size                    = UDim2.new(1, -20, 0, 250)
-scroll.Position                = UDim2.new(0, 10, 0, 90)
-scroll.BackgroundColor3        = Color3.fromRGB(50,50,50)
-scroll.BorderSizePixel         = 0
-scroll.AutomaticCanvasSize     = Enum.AutomaticSize.Y
-scroll.ScrollBarThickness      = 6
+scroll.Size = UDim2.new(1, -20, 0, 250)
+scroll.Position = UDim2.new(0, 10, 0, 90)
+scroll.BackgroundColor3 = Color3.fromRGB(50,50,50)
+scroll.BorderSizePixel = 0
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.ScrollBarThickness = 6
 Instance.new("UICorner", scroll).CornerRadius = UDim.new(0,6)
 
 local layout = Instance.new("UIListLayout", scroll)
-layout.SortOrder               = Enum.SortOrder.LayoutOrder
-layout.Padding                 = UDim.new(0,4)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0,4)
 
 -- Move Button
 local moveBtn = Instance.new("TextButton", frame)
-moveBtn.Size                   = UDim2.new(1, -20, 0, 40)
-moveBtn.Position               = UDim2.new(0, 10, 0, 340)
-moveBtn.Text                   = "🚀 이동"
-moveBtn.Font                   = Enum.Font.SourceSansBold
-moveBtn.TextSize               = 16
-moveBtn.TextColor3             = Color3.new(1,1,1)
-moveBtn.BackgroundColor3       = Color3.fromRGB(0,120,255)
+moveBtn.Size = UDim2.new(1, -20, 0, 40)
+moveBtn.Position = UDim2.new(0, 10, 1, -50)
+moveBtn.Text = "🚀 이동"
+moveBtn.Font = Enum.Font.SourceSansBold
+moveBtn.TextSize = 16
+moveBtn.TextColor3 = Color3.new(1,1,1)
+moveBtn.BackgroundColor3 = Color3.fromRGB(0,120,255)
 Instance.new("UICorner", moveBtn).CornerRadius = UDim.new(0,6)
-moveBtn.Active                 = false
-moveBtn.BackgroundTransparency = 0.5
+moveBtn.Visible = false  -- Hidden until player selected
+moveBtn.Enabled = false
 
 -- State
 local selectedPlayer = nil
 local buttons = {}
+
+-- Fly To Position Function
+local function flyTo(pos)
+    print("비행 시작 to", pos)
+    -- NoClip
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+    local speed = 200
+    local startPos = hrp.Position
+    local direction = (pos - startPos).Unit
+    local distance = (pos - startPos).Magnitude
+    local startTime = tick()
+    local conn
+    conn = RunService.Heartbeat:Connect(function(dt)
+        local elapsed = (tick() - startTime) * speed
+        if elapsed >= distance then
+            hrp.CFrame = CFrame.new(pos)
+            conn:Disconnect()
+        else
+            hrp.CFrame = hrp.CFrame + direction * speed * dt
+        end
+    end)
+end
 
 -- Refresh Player List
 local function refreshList()
@@ -309,29 +341,31 @@ local function refreshList()
     end
     buttons = {}
     selectedPlayer = nil
-    moveBtn.Active                 = false
-    moveBtn.BackgroundTransparency = 0.5
+    moveBtn.Visible = false
+    moveBtn.Enabled = false
 
     local keyword = searchBox.Text:lower()
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= player and plr.Name:lower():find(keyword) then
             local btn = Instance.new("TextButton")
-            btn.Size               = UDim2.new(1, 0, 0, 30)
-            btn.Text               = plr.Name
-            btn.Font               = Enum.Font.SourceSans
-            btn.TextSize           = 14
-            btn.TextColor3         = Color3.new(1,1,1)
-            btn.BackgroundColor3   = Color3.fromRGB(70,70,70)
+            btn.Size = UDim2.new(1, 0, 0, 30)
+            btn.Text = plr.Name
+            btn.Font = Enum.Font.SourceSans
+            btn.TextSize = 14
+            btn.TextColor3 = Color3.new(1,1,1)
+            btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
             Instance.new("UICorner", btn).CornerRadius = UDim.new(0,4)
             btn.Parent = scroll
 
             btn.MouseButton1Click:Connect(function()
                 -- Highlight selection
-                for _, b in ipairs(buttons) do b.BackgroundColor3 = Color3.fromRGB(70,70,70) end
-                btn.BackgroundColor3    = Color3.fromRGB(0,170,255)
-                selectedPlayer          = plr
-                moveBtn.Active          = true
-                moveBtn.BackgroundTransparency = 0
+                for _, b in ipairs(buttons) do
+                    b.BackgroundColor3 = Color3.fromRGB(70,70,70)
+                end
+                btn.BackgroundColor3 = Color3.fromRGB(0,170,255)
+                selectedPlayer = plr
+                moveBtn.Visible = true
+                moveBtn.Enabled = true
             end)
 
             table.insert(buttons, btn)
@@ -339,35 +373,13 @@ local function refreshList()
     end
 end
 
--- Fly To Position
-local function flyTo(pos)
-    -- NoClip
-    for _, part in ipairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then part.CanCollide = false end
-    end
-    local speed  = 200
-    local start  = hrp.Position
-    local dir    = (pos - start).Unit
-    local dist   = (pos - start).Magnitude
-    local startT = tick()
-
-    local conn
-    conn = RunService.RenderStepped:Connect(function(dt)
-        local travel = (tick() - startT) * speed
-        if travel >= dist then
-            hrp.CFrame = CFrame.new(pos)
-            conn:Disconnect()
-        else
-            hrp.CFrame = hrp.CFrame + dir * speed * dt
-        end
-    end)
-end
-
 -- Move Button Click
 moveBtn.MouseButton1Click:Connect(function()
     if selectedPlayer and selectedPlayer.Character and selectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local targetHRP = selectedPlayer.Character.HumanoidRootPart
         flyTo(targetHRP.Position + Vector3.new(0,3,0))
+    else
+        warn("선택된 플레이어 없음 or HumanoidRootPart missing")
     end
 end)
 
