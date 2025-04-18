@@ -222,192 +222,158 @@ UIS.InputChanged:Connect(function(input)
         )
     end
 end)
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-local playerGui = player:WaitForChild("PlayerGui")
+-- Services
+local Players      = game:GetService("Players")
+local RunService   = game:GetService("RunService")
+local UIS          = game:GetService("UserInputService")
 
--- GUI 생성
+-- LocalPlayer info
+local player       = Players.LocalPlayer
+local character    = player.Character or player.CharacterAdded:Wait()
+local hrp          = character:WaitForChild("HumanoidRootPart")
+local playerGui    = player:WaitForChild("PlayerGui")
+
+-- GUI 만들기
 local gui = Instance.new("ScreenGui")
-gui.Name = "TeleportUI"
+gui.Name = "PlayerFlyTPGui"
 gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
--- 프레임
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 450)
-frame.Position = UDim2.new(0.85, -150, 0.5, -225)
-frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-frame.Active = true
+frame.Size = UDim2.new(0, 300, 0, 400)
+frame.Position = UDim2.new(0.5, -150, 0.5, -200)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 frame.Parent = gui
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
 
--- 타이틀
+-- 제목
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, -40, 0, 30)
-title.Position = UDim2.new(0, 10, 0, 5)
-title.Text = "🧭 플레이어 빠른이동"
-title.BackgroundTransparency = 1
+title.Size = UDim2.new(1, -20, 0, 30)
+title.Position = UDim2.new(0, 10, 0, 10)
+title.Text = "👥 플레이어 자동 비행 이동"
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 18
-title.TextColor3 = Color3.new(1, 1, 1)
-title.TextXAlignment = Enum.TextXAlignment.Left
-
--- X 버튼
-local closeBtn = Instance.new("TextButton", frame)
-closeBtn.Size = UDim2.new(0, 25, 0, 25)
-closeBtn.Position = UDim2.new(1, -30, 0, 5)
-closeBtn.Text = "❌"
-closeBtn.Font = Enum.Font.SourceSansBold
-closeBtn.TextSize = 16
-closeBtn.TextColor3 = Color3.new(1, 1, 1)
-closeBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
-
-closeBtn.MouseButton1Click:Connect(function()
-    frame.Visible = false
-end)
+title.TextColor3 = Color3.new(1,1,1)
+title.BackgroundTransparency = 1
 
 -- 검색창
 local searchBox = Instance.new("TextBox", frame)
 searchBox.Size = UDim2.new(1, -20, 0, 30)
-searchBox.Position = UDim2.new(0, 10, 0, 40)
-searchBox.PlaceholderText = "🔍 플레이어 이름 검색"
-searchBox.Text = ""
+searchBox.Position = UDim2.new(0, 10, 0, 50)
+searchBox.PlaceholderText = "검색: 플레이어 이름"
 searchBox.Font = Enum.Font.SourceSans
 searchBox.TextSize = 14
-searchBox.TextColor3 = Color3.new(1, 1, 1)
-searchBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 6)
+searchBox.TextColor3 = Color3.new(1,1,1)
+searchBox.BackgroundColor3 = Color3.fromRGB(60,60,60)
+Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0,6)
 
--- 스크롤 컨테이너
-local scrollFrame = Instance.new("ScrollingFrame", frame)
-scrollFrame.Size = UDim2.new(1, -20, 1, -100)
-scrollFrame.Position = UDim2.new(0, 10, 0, 80)
-scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-scrollFrame.ScrollBarThickness = 8
-scrollFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-scrollFrame.ClipsDescendants = true
+-- 스크롤 리스트
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Size = UDim2.new(1, -20, 1, -160)
+scroll.Position = UDim2.new(0, 10, 0, 90)
+scroll.BackgroundColor3 = Color3.fromRGB(50,50,50)
+scroll.BorderSizePixel = 0
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.ScrollBarThickness = 6
+Instance.new("UICorner", scroll).CornerRadius = UDim.new(0,6)
 
-local UIList = Instance.new("UIListLayout", scrollFrame)
-UIList.Padding = UDim.new(0, 5)
-UIList.SortOrder = Enum.SortOrder.LayoutOrder
+local layout = Instance.new("UIListLayout", scroll)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0,4)
 
-local playerButtons = {}
+-- 이동 버튼
+local moveBtn = Instance.new("TextButton", frame)
+moveBtn.Size = UDim2.new(1, -20, 0, 40)
+moveBtn.Position = UDim2.new(0, 10, 1, -50)
+moveBtn.Text = "🚀 이동"
+moveBtn.Font = Enum.Font.SourceSansBold
+moveBtn.TextSize = 16
+moveBtn.TextColor3 = Color3.new(1,1,1)
+moveBtn.BackgroundColor3 = Color3.fromRGB(0,120,255)
+Instance.new("UICorner", moveBtn).CornerRadius = UDim.new(0,6)
+moveBtn.AutoButtonColor = false
+moveBtn.Active = false
+moveBtn.BackgroundTransparency = 0.5
 
--- 플레이어 목록 불러오기 함수
-local function loadPlayers()
-    -- 이전 버튼들 삭제
-    for _, btn in pairs(playerButtons) do
-        btn:Destroy()
-    end
-    playerButtons = {}
+-- 선택 관리
+local selectedPlayer = nil
+local buttons = {}
+
+-- 플레이어 리스트 갱신
+local function refreshList()
+    -- 이전 버튼 제거
+    for _, btn in ipairs(buttons) do btn:Destroy() end
+    buttons = {}
+    selectedPlayer = nil
+    moveBtn.Active = false
+    moveBtn.BackgroundTransparency = 0.5
 
     local keyword = searchBox.Text:lower()
-    local allPlayers = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Name:lower():find(keyword) then
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, 0, 0, 30)
+            btn.Text = plr.Name
+            btn.Font = Enum.Font.SourceSans
+            btn.TextSize = 14
+            btn.TextColor3 = Color3.new(1,1,1)
+            btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0,4)
+            btn.Parent = scroll
 
-    -- 서버에 있는 모든 플레이어 불러오기
-    for _, p in ipairs(Players:GetPlayers()) do
-        -- 플레이어 이름이 검색어에 맞는지 확인
-        if p.Name:lower():find(keyword) then
-            table.insert(allPlayers, p)
+            btn.MouseButton1Click:Connect(function()
+                -- 선택 토글
+                for _, b in ipairs(buttons) do
+                    b.BackgroundColor3 = Color3.fromRGB(70,70,70)
+                end
+                btn.BackgroundColor3 = Color3.fromRGB(0,170,255)
+                selectedPlayer = plr
+                moveBtn.Active = true
+                moveBtn.BackgroundTransparency = 0
+            end)
+
+            table.insert(buttons, btn)
         end
-    end
-
-    -- 검색된 플레이어들에 대한 버튼 생성
-    for _, p in ipairs(allPlayers) do
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, 0, 0, 25)
-        btn.Text = p.Name
-        btn.Font = Enum.Font.SourceSans
-        btn.TextSize = 14
-        btn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
-        btn.TextColor3 = Color3.new(1, 1, 1)
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-
-        -- 버튼 클릭 시 이동
-        btn.MouseButton1Click:Connect(function()
-            local targetPlayer = p
-            fastTeleportTo(targetPlayer)  -- 텔레포트 기능 호출
-        end)
-
-        btn.Parent = scrollFrame
-        table.insert(playerButtons, btn)
     end
 end
 
--- 텔레포트 함수 (플레이어로 이동)
-local function fastTeleportTo(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then
-        print("플레이어의 캐릭터가 없습니다.")
-        return
-    end
-
-    local targetPos = targetPlayer.Character:WaitForChild("HumanoidRootPart").Position
-    local speed = 200
-    local direction = (targetPos - humanoidRootPart.Position).Unit
-    local distance = (targetPos - humanoidRootPart.Position).Magnitude
-    local duration = distance / speed
-
-    -- 노클립 처리
+-- 비행 이동 함수
+local function flyTo(pos)
+    -- 노클립
     for _, part in ipairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
-        end
+        if part:IsA("BasePart") then part.CanCollide = false end
     end
 
-    local startTime = tick()
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
-        local elapsed = tick() - startTime
-        if elapsed >= duration then
-            humanoidRootPart.CFrame = CFrame.new(targetPos)
-            connection:Disconnect()
-            return
+    local speed   = 200
+    local start   = hrp.Position
+    local dir     = (pos - start).Unit
+    local dist    = (pos - start).Magnitude
+    local startT  = tick()
+
+    local conn
+    conn = RunService.RenderStepped:Connect(function(dt)
+        local elapsed = tick() - startT
+        if elapsed*speed >= dist then
+            hrp.CFrame = CFrame.new(pos)
+            conn:Disconnect()
+        else
+            hrp.CFrame = hrp.CFrame + dir * speed * dt
         end
-        humanoidRootPart.CFrame = humanoidRootPart.CFrame + direction * speed * RunService.Heartbeat:Wait()
     end)
 end
 
--- 텍스트 박스에서 텍스트가 변경될 때마다 플레이어 목록 새로 불러오기
-searchBox:GetPropertyChangedSignal("Text"):Connect(loadPlayers)
-
--- 처음 로드
-loadPlayers()
-
--- 드래그 기능
-local dragging = false
-local dragInput, dragStart, startPos
-
-frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
+-- 버튼에 연결
+moveBtn.MouseButton1Click:Connect(function()
+    if selectedPlayer and selectedPlayer.Character and selectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        flyTo(selectedPlayer.Character.HumanoidRootPart.Position + Vector3.new(0,3,0))
     end
 end)
 
-frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
+-- 이벤트 연결
+searchBox:GetPropertyChangedSignal("Text"):Connect(refreshList)
+Players.PlayerAdded:Connect(refreshList)
+Players.PlayerRemoving:Connect(refreshList)
 
-UIS.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(
-            startPos.X.Scale, startPos.X.Offset + delta.X,
-            startPos.Y.Scale, startPos.Y.Offset + delta.Y
-        )
-    end
-end)
+-- 초기화
+refreshList()
