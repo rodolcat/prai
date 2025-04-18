@@ -300,6 +300,7 @@ local playerButtons = {}
 
 -- 플레이어 목록 불러오기 함수
 local function loadPlayers()
+    -- 이전 버튼들 삭제
     for _, btn in pairs(playerButtons) do
         btn:Destroy()
     end
@@ -307,12 +308,16 @@ local function loadPlayers()
 
     local keyword = searchBox.Text:lower()
     local allPlayers = {}
+
+    -- 서버에 있는 모든 플레이어 불러오기
     for _, p in ipairs(Players:GetPlayers()) do
+        -- 플레이어 이름이 검색어에 맞는지 확인
         if p.Name:lower():find(keyword) then
             table.insert(allPlayers, p)
         end
     end
 
+    -- 검색된 플레이어들에 대한 버튼 생성
     for _, p in ipairs(allPlayers) do
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, 0, 0, 25)
@@ -325,7 +330,7 @@ local function loadPlayers()
 
         btn.MouseButton1Click:Connect(function()
             local targetPlayer = p
-            fastTeleportTo(targetPlayer)
+            fastTeleportTo(targetPlayer)  -- 텔레포트 기능 호출
         end)
 
         btn.Parent = scrollFrame
@@ -335,7 +340,10 @@ end
 
 -- 텔레포트 함수 (플레이어로 이동)
 local function fastTeleportTo(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then return end
+    if not targetPlayer or not targetPlayer.Character then
+        print("플레이어의 캐릭터가 없습니다.")
+        return
+    end
 
     local targetPos = targetPlayer.Character:WaitForChild("HumanoidRootPart").Position
     local speed = 200
@@ -363,13 +371,13 @@ local function fastTeleportTo(targetPlayer)
     end)
 end
 
--- 리로드 버튼 연결
+-- 텍스트 박스에서 텍스트가 변경될 때마다 플레이어 목록 새로 불러오기
 searchBox:GetPropertyChangedSignal("Text"):Connect(loadPlayers)
 
 -- 처음 로드
 loadPlayers()
 
--- 커스텀 드래그 기능
+-- 드래그 기능
 local dragging = false
 local dragInput, dragStart, startPos
 
