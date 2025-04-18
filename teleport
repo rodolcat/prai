@@ -222,3 +222,98 @@ UIS.InputChanged:Connect(function(input)
         )
     end
 end)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HRP = Character:WaitForChild("HumanoidRootPart")
+
+-- GUI 생성
+local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+gui.Name = "FlyToUserUI"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 250, 0, 350)
+frame.Position = UDim2.new(0.5, -125, 0.5, -175)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.Active = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, -20, 0, 30)
+title.Position = UDim2.new(0, 10, 0, 10)
+title.Text = "👥 유저 자동 이동"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextSize = 18
+title.Font = Enum.Font.SourceSansBold
+title.BackgroundTransparency = 1
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Position = UDim2.new(0, 10, 0, 50)
+scroll.Size = UDim2.new(1, -20, 1, -60)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.ScrollBarThickness = 8
+scroll.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+local layout = Instance.new("UIListLayout", scroll)
+layout.Padding = UDim.new(0, 5)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- 노클립 + 날아서 이동 함수
+local function flyTo(targetPos)
+	local speed = 200
+	local direction = (targetPos - HRP.Position).Unit
+	local distance = (targetPos - HRP.Position).Magnitude
+	local duration = distance / speed
+
+	-- 노클립
+	for _, part in ipairs(Character:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.CanCollide = false
+		end
+	end
+
+	local startTime = tick()
+	local connection
+	connection = RunService.Heartbeat:Connect(function()
+		local elapsed = tick() - startTime
+		if elapsed >= duration then
+			HRP.CFrame = CFrame.new(targetPos)
+			connection:Disconnect()
+			return
+		end
+		HRP.CFrame = HRP.CFrame + direction * speed * RunService.Heartbeat:Wait()
+	end)
+end
+
+-- 버튼 생성 함수
+local function refreshPlayerList()
+	scroll:ClearAllChildren()
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			local btn = Instance.new("TextButton", scroll)
+			btn.Size = UDim2.new(1, 0, 0, 30)
+			btn.Text = p.Name
+			btn.Font = Enum.Font.SourceSans
+			btn.TextSize = 14
+			btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+			btn.TextColor3 = Color3.new(1, 1, 1)
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+			btn.MouseButton1Click:Connect(function()
+				local targetHRP = p.Character:FindFirstChild("HumanoidRootPart")
+				if targetHRP then
+					flyTo(targetHRP.Position)
+				end
+			end)
+		end
+	end
+end
+
+-- 초기 로딩 및 유저 추가/제거시 업데이트
+refreshPlayerList()
+Players.PlayerAdded:Connect(refreshPlayerList)
+Players.PlayerRemoving:Connect(refreshPlayerList)
