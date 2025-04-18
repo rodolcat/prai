@@ -227,89 +227,90 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- GUI 생성
-local gui = Instance.new("ScreenGui")
-gui.Name = "TeleportUI"
-gui.Parent = PlayerGui
+-- GUI
+local gui = Instance.new("ScreenGui", PlayerGui)
+gui.Name = "UserTeleportGui"
+gui.ResetOnSpawn = false
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 400)
-frame.Position = UDim2.new(0.5, -150, 0.5, -200)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.Parent = gui
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 250, 0, 350)
+frame.Position = UDim2.new(0.5, -125, 0.5, -175)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 Instance.new("UICorner", frame)
 
 local title = Instance.new("TextLabel", frame)
-title.Text = "유저 목록"
 title.Size = UDim2.new(1, 0, 0, 40)
-title.BackgroundTransparency = 1
+title.Text = "유저 목록"
 title.TextColor3 = Color3.new(1, 1, 1)
+title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
 
 local scroll = Instance.new("ScrollingFrame", frame)
-scroll.Size = UDim2.new(1, -20, 1, -60)
-scroll.Position = UDim2.new(0, 10, 0, 50)
+scroll.Size = UDim2.new(1, -20, 1, -50)
+scroll.Position = UDim2.new(0, 10, 0, 45)
+scroll.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+scroll.BorderSizePixel = 0
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 scroll.ScrollBarThickness = 6
-scroll.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-scroll.BorderSizePixel = 0
 
 local layout = Instance.new("UIListLayout", scroll)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Padding = UDim.new(0, 5)
 
-local function flyToPosition(targetPos)
-	local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-	local HRP = Character:WaitForChild("HumanoidRootPart")
-	local speed = 150
+-- 노클립 & 이동 함수
+local function flyToPlayer(targetPlayer)
+	local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	local hrp = character:WaitForChild("HumanoidRootPart")
+	local targetChar = targetPlayer.Character
+	if not (targetChar and targetChar:FindFirstChild("HumanoidRootPart")) then return end
 
-	-- 노클립 설정
-	for _, part in ipairs(Character:GetDescendants()) do
+	-- 노클립
+	for _, part in ipairs(character:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.CanCollide = false
 		end
 	end
 
-	-- 방향 계산
-	local direction = (targetPos - HRP.Position).Unit
-	local totalDistance = (targetPos - HRP.Position).Magnitude
-	local duration = totalDistance / speed
-	local startTime = tick()
+	local targetPos = targetChar.HumanoidRootPart.Position + Vector3.new(0, 5, 0)
+	local speed = 100
+	local connection
 
-	local conn
-	conn = RunService.Heartbeat:Connect(function(dt)
-		local elapsed = tick() - startTime
-		if elapsed >= duration then
-			HRP.CFrame = CFrame.new(targetPos)
-			conn:Disconnect()
-		else
-			local moveStep = direction * speed * dt
-			HRP.CFrame = HRP.CFrame + moveStep
+	connection = RunService.Heartbeat:Connect(function(dt)
+		local direction = (targetPos - hrp.Position).Unit
+		local distance = (targetPos - hrp.Position).Magnitude
+
+		if distance < 5 then
+			connection:Disconnect()
+			hrp.AssemblyLinearVelocity = Vector3.zero
+			hrp.CFrame = CFrame.new(targetPos)
+			return
 		end
+
+		local move = direction * speed
+		hrp.AssemblyLinearVelocity = move
 	end)
 end
 
-local function createUserButton(player)
+-- 유저 버튼 생성
+local function createUserButton(plr)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(1, 0, 0, 30)
-	btn.Text = player.Name
+	btn.Text = plr.Name
+	btn.BackgroundColor3 = Color3.fromRGB(80, 80, 180)
 	btn.TextColor3 = Color3.new(1, 1, 1)
-	btn.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
 	btn.Font = Enum.Font.Gotham
 	btn.TextSize = 16
-	btn.Parent = scroll
 	Instance.new("UICorner", btn)
+	btn.Parent = scroll
 
 	btn.MouseButton1Click:Connect(function()
-		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			local targetPos = player.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0)
-			flyToPosition(targetPos)
-		end
+		flyToPlayer(plr)
 	end)
 end
 
+-- 유저 목록 불러오기
 local function refreshList()
 	scroll:ClearAllChildren()
 	Instance.new("UIListLayout", scroll).Padding = UDim.new(0, 5)
@@ -321,9 +322,7 @@ local function refreshList()
 	end
 end
 
+-- 초기 실행
 refreshList()
-
--- 새 유저가 들어오면 목록 자동 갱신
 Players.PlayerAdded:Connect(refreshList)
 Players.PlayerRemoving:Connect(refreshList)
-
